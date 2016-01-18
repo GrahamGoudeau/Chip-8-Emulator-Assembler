@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include "cpu_chip_8.h"
 
 #define MEMORY_SIZE 0x1000
@@ -9,6 +10,7 @@
 #define DIGIT_SPRITE_LEN 5
 
 #define MEMORY_INIT_ERR "ERR - Fatal error during memory initialization: "
+#define OPCODE_DECODE_ERR "ERR - Fatal error during opcode decoding: "
 
 int debug = 1;
 
@@ -27,8 +29,11 @@ struct chip_8_cpu {
 
     special_register program_counter;
 
-    uint8_t stack_pointer;
+    int8_t stack_pointer;
     address stack[STACK_SIZE];
+
+    bool performed_jump;
+    bool skip_opcode;
 };
 
 chip_8_cpu initialize_cpu(void) {
@@ -52,6 +57,8 @@ chip_8_cpu initialize_cpu(void) {
     for (i = 0; i < STACK_SIZE; i++) {
         cpu->stack[i] = 0;
     }
+    cpu->performed_jump = false;
+    cpu->skip_opcode = false;
     return cpu;
 }
 
@@ -84,7 +91,6 @@ void initialize_memory(chip_8_cpu cpu, FILE *program_file) {
     int new_16_bits;
     address destination = PROG_START;
     new_16_bits = read_16_bits(program_file);
-    fprintf(stderr, "first time: %X\n", new_16_bits);
     while (new_16_bits != EOF && destination < MEMORY_SIZE) {
         if (debug) fprintf(stderr, "Destination: %d\n", destination);
         if (debug) fprintf(stderr, "Instruction: %X\n", (opcode)new_16_bits);
@@ -95,5 +101,96 @@ void initialize_memory(chip_8_cpu cpu, FILE *program_file) {
     if (destination == MEMORY_SIZE) {
         fprintf(stderr, MEMORY_INIT_ERR "'Program size exceeds chip-8 memory capacity'\n");
         exit(1);
+    }
+}
+
+static opcode fetch_opcode(chip_8_cpu cpu) {
+    return cpu->memory[cpu->program_counter];
+}
+
+static inline uint8_t get_last_byte(opcode instr) {
+    return instr & 0x000F;
+}
+
+static void clear_display(void) {
+    fprintf(stderr, "CLEAR SCREEN NOT IMPLEMENTED\n");
+}
+
+static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
+    // 0nnn opcode not implemented
+    switch (get_last_byte(instr)) {
+        case 0xE0:
+            clear_display();
+            break;
+        case 0xEE: {
+            int8_t stack_pointer = cpu->stack_pointer - 1;
+            if (stack_pointer == -1) {
+                fprintf(stderr, OPCODE_DECODE_ERR "Call stack empty but got opcode RET\n");
+            }
+            cpu->stack_pointer = stack_pointer;
+            cpu->program_counter = cpu->stack[stack_pointer];
+        }
+    }
+}
+
+static void execute_opcode(opcode instr, chip_8_cpu cpu) {
+    nibble first_nibble = (instr & 0xF000) >> 6; 
+    if (debug) fprintf(stderr, "Got nibble: %X\n", first_nibble);
+    switch (first_nibble) {
+        case 0x0:
+            return handle_0_opcode(instr, cpu);
+            /*
+        case 0x1:
+            return handle_1_opcode(instr, cpu);
+        case 0x2:
+            return handle_2_opcode(instr, cpu);
+        case 0x3:
+            return handle_3_opcode(instr, cpu);
+        case 0x4:
+            return handle_4_opcode(instr, cpu);
+        case 0x5:
+            return handle_5_opcode(instr, cpu);
+        case 0x6:
+            return handle_6_opcode(instr, cpu);
+        case 0x7:
+            return handle_7_opcode(instr, cpu);
+        case 0x8:
+            return handle_8_opcode(instr, cpu);
+        case 0x9:
+            return handle_9_opcode(instr, cpu);
+        case 0xA:
+            return handle_A_opcode(instr, cpu);
+        case 0xB:
+            return handle_B_opcode(instr, cpu);
+        case 0xC:
+            return handle_C_opcode(instr, cpu);
+        case 0xD:
+            return handle_D_opcode(instr, cpu);
+        case 0xE:
+            return handle_E_opcode(instr, cpu);
+        case 0xF:
+            return handle_F_opcode(instr, cpu);
+            */
+    }
+}
+
+void execute_loop(chip_8_cpu cpu) {
+    while (1) {
+        opcode instr = fetch_opcode(cpu);
+        execute_opcode(instr, cpu);
+        if (cpu->performed_jump) {
+            // reset jumped flag
+            cpu->performed_jump = false;
+            continue;
+        }
+
+        if (cpu->skip_opcode) {
+            cpu->program_counter = cpu->program_counter + 2;
+            // reset skip flag
+            cpu->skip_opcode = false;
+        }
+        else {
+            cpu->program_counter = cpu->program_counter + 1;
+        }
     }
 }

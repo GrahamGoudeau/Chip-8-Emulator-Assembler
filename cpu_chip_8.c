@@ -12,7 +12,7 @@
 #define MEMORY_INIT_ERR "ERR - Fatal error during memory initialization: "
 #define OPCODE_DECODE_ERR "ERR - Fatal error during opcode decoding: "
 
-int debug = 1;
+int debug = false;
 
 // first valid address of program instructions
 const address PROG_START = 0x200;
@@ -109,14 +109,29 @@ static opcode fetch_opcode(chip_8_cpu cpu) {
 }
 
 static inline uint8_t get_last_byte(opcode instr) {
-    return instr & 0x000F;
+    return instr & 0x00FF;
 }
 
 static void clear_display(void) {
     fprintf(stderr, "CLEAR SCREEN NOT IMPLEMENTED\n");
 }
 
+static void not_implemented(opcode instr) {
+    fprintf(stderr, OPCODE_DECODE_ERR "'Not implemented: %X\n", instr);
+    exit(1);
+}
+
+static void stack_underflow() {
+    fprintf(stderr, OPCODE_DECODE_ERR "Call stack empty but got opcode RET\n");
+    exit(1);
+}
+
 static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
+    if (instr == 0x00) {
+        fprintf(stderr, "Got to opcode 0x0000, quitting...\n");
+        exit(0);
+    }
+
     // 0nnn opcode not implemented
     switch (get_last_byte(instr)) {
         case 0xE0:
@@ -125,13 +140,14 @@ static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
         case 0xEE: {
             int8_t stack_pointer = cpu->stack_pointer - 1;
             if (stack_pointer == -1) {
-                fprintf(stderr, OPCODE_DECODE_ERR "Call stack empty but got opcode RET\n");
-                exit(1);
+                stack_underflow();
             }
             cpu->stack_pointer = stack_pointer;
             cpu->program_counter = cpu->stack[stack_pointer];
             cpu->performed_jump = true;
         }
+        default:
+            not_implemented(instr);
     }
 }
 
@@ -144,7 +160,7 @@ static void handle_1_opcode(opcode instr, chip_8_cpu cpu) {
     cpu->program_counter = get_last_three_nibbles(instr);
 }
 
-static void handle_2_opcode(opcode instr, chip_8_cpu) {
+static void handle_2_opcode(opcode instr, chip_8_cpu cpu) {
     cpu->performed_jump = true;
     cpu->stack[cpu->stack_pointer] = cpu->program_counter;
     cpu->stack_pointer = cpu->stack_pointer + 1;

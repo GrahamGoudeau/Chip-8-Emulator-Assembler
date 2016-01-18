@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
         FILE *input = fopen(argv[1], "rb");
         initialize_memory(cpu, input);
         fclose(input);
+        execute_loop(cpu);
         free_cpu(cpu);
     }
 }

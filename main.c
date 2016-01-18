@@ -1,5 +1,6 @@
 #include <ncurses.h>
 #include <unistd.h>
+#include "cpu_chip_8.h"
 
 // sudo apt-get install libncurses5-dev
 // http://stackoverflow.com/questions/4025891/create-a-function-to-check-for-key-press-in-unix-using-ncurses

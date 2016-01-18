@@ -126,11 +126,31 @@ static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
             int8_t stack_pointer = cpu->stack_pointer - 1;
             if (stack_pointer == -1) {
                 fprintf(stderr, OPCODE_DECODE_ERR "Call stack empty but got opcode RET\n");
+                exit(1);
             }
             cpu->stack_pointer = stack_pointer;
             cpu->program_counter = cpu->stack[stack_pointer];
+            cpu->performed_jump = true;
         }
     }
+}
+
+static inline address get_last_three_nibbles(opcode instr) {
+    return (instr & 0x0FFF);
+}
+
+static void handle_1_opcode(opcode instr, chip_8_cpu cpu) {
+    cpu->performed_jump = true;
+    cpu->program_counter = get_last_three_nibbles(instr);
+}
+
+static void handle_2_opcode(opcode instr, chip_8_cpu) {
+    cpu->performed_jump = true;
+    cpu->stack[cpu->stack_pointer] = cpu->program_counter;
+    cpu->stack_pointer = cpu->stack_pointer + 1;
+
+    address new_program_counter = get_last_three_nibbles(instr);
+    cpu->program_counter = new_program_counter;
 }
 
 static inline nibble get_first_nibble(opcode instr) {

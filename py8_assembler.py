@@ -10,7 +10,7 @@ class OpCode:
     def __init__(self, name='', args=[], line_num=None, labels={}):
         self.name = name.upper()
         self.args = args
-        self.opcode_parity_func_map = {
+        self.opcode_arity_func_map = {
             'CLS': (0, self.build_cls),
             'RET': (0, self.build_ret),
             'SYS': (1, self.build_sys),
@@ -78,10 +78,10 @@ class OpCode:
         pass
 
     def encoded(self):
-        if self.name not in self.opcode_parity_func_map:
+        if self.name not in self.opcode_arity_func_map:
             self.invalid()
 
-        func_arity, func = self.opcode_parity_func_map[self.name]
+        func_arity, func = self.opcode_arity_func_map[self.name]
 
         if len(self.args) != func_arity:
             self.invalid(message='Mismatched opcode arity; expected {} args'.format(func_arity))

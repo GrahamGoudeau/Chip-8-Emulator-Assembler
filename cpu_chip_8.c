@@ -68,6 +68,11 @@ void free_cpu(chip_8_cpu cpu) {
     }
 }
 
+void shutdown_cpu(chip_8_cpu cpu, int error_code) {
+    free_cpu(cpu);
+    exit(error_code);
+}
+
 static int read_16_bits(FILE *program_file) {
     int lower_byte, higher_byte;
     higher_byte = fgetc(program_file);
@@ -92,15 +97,13 @@ void initialize_memory(chip_8_cpu cpu, FILE *program_file) {
     address destination = PROG_START;
     new_16_bits = read_16_bits(program_file);
     while (new_16_bits != EOF && destination < MEMORY_SIZE) {
-        if (debug) fprintf(stderr, "Destination: %d\n", destination);
-        if (debug) fprintf(stderr, "Instruction: %X\n", (opcode)new_16_bits);
         cpu->memory[destination] = (opcode)new_16_bits;
         destination++;
         new_16_bits = read_16_bits(program_file);
     }
     if (destination == MEMORY_SIZE) {
         fprintf(stderr, MEMORY_INIT_ERR "'Program size exceeds chip-8 memory capacity'\n");
-        exit(1);
+        shutdown_cpu(cpu, 1);
     }
 }
 
@@ -116,20 +119,20 @@ static void clear_display(void) {
     fprintf(stderr, "CLEAR SCREEN NOT IMPLEMENTED\n");
 }
 
-static void not_implemented(opcode instr) {
-    fprintf(stderr, OPCODE_DECODE_ERR "'Not implemented: %X\n", instr);
-    exit(1);
+static void not_implemented(chip_8_cpu cpu, opcode instr) {
+    fprintf(stderr, OPCODE_DECODE_ERR "'Not implemented: %04X'\n", instr);
+    shutdown_cpu(cpu, 1);
 }
 
-static void stack_underflow() {
+static void stack_underflow(chip_8_cpu cpu) {
     fprintf(stderr, OPCODE_DECODE_ERR "Call stack empty but got opcode RET\n");
-    exit(1);
+    shutdown_cpu(cpu, 1);
 }
 
 static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
     if (instr == 0x00) {
-        fprintf(stderr, "Got to opcode 0x0000, quitting...\n");
-        exit(0);
+        fprintf(stderr, "Got opcode 0x0000, quitting...\n");
+        shutdown_cpu(cpu, 0);
     }
 
     // 0nnn opcode not implemented
@@ -140,14 +143,14 @@ static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
         case 0xEE: {
             int8_t stack_pointer = cpu->stack_pointer - 1;
             if (stack_pointer == -1) {
-                stack_underflow();
+                stack_underflow(cpu);
             }
             cpu->stack_pointer = stack_pointer;
             cpu->program_counter = cpu->stack[stack_pointer];
             cpu->performed_jump = true;
         }
         default:
-            not_implemented(instr);
+            not_implemented(cpu, instr);
     }
 }
 
@@ -216,6 +219,12 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
 
 void execute_loop(chip_8_cpu cpu) {
     while (1) {
+        if (debug) {
+            fprintf(stderr, "Execution loop info:\n");
+            fprintf(stderr, "\tProgram counter: %d\n", cpu->program_counter);
+            fprintf(stderr, "\n--------------\n\n");
+        }
+
         opcode instr = fetch_opcode(cpu);
         execute_opcode(instr, cpu);
         if (cpu->performed_jump) {

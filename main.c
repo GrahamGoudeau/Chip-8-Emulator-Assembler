@@ -13,7 +13,6 @@ int main(int argc, char **argv) {
     sleep(1);
     endwin();
     */
-    fprintf(stderr, "argc: %d\n", argc);
     if (argc > 1) {
         chip_8_cpu cpu = initialize_cpu();
 

@@ -128,6 +128,20 @@ class OpCode:
 
 
 def assemble(input_file, output_file):
+    def parse_label(line, opcodes, labels):
+        first_token = line[0].upper()
+        if first_token == label_start and len(line) == 2:
+            labels[line[1]] = len(opcodes) + 1
+            return True
+        elif first_token == label_start:
+            print 'Fatal error: Invalid label format: {}'.format(line)
+            sys.exit()
+
+        return False
+    def parse_opcode(line, opcodes, labels):
+        new_opcode = OpCode(name=line[0], args=line[1:], labels=labels)
+        opcodes.append(new_opcode)
+
     opcodes = []
     labels = {}
     with open(input_file, 'r') as f:
@@ -139,14 +153,11 @@ def assemble(input_file, output_file):
                 continue
 
             line = line.split()
-            if line[0].upper() == label_start and len(line) == 2:
-                # set the label to the NEXT opcode
-                labels[line[1]] = len(opcodes) + 1
-            elif line[0].upper() == label_start:
-                print 'Fatal error: Invalid label format: {}'.format(line)
-                sys.exit()
+            first_token = line[0].upper()
+            if first_token == label_start:
+                parse_label(line, opcodes, labels)
             else:
-                opcodes.append(OpCode(name=line[0], args=line[1:], labels=labels))
+                parse_opcode(line, opcodes, labels)
 
     if line[0].upper() == label_start:
         print 'Fatal error: Cannot end .as file with a label'

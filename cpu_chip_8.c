@@ -11,8 +11,9 @@
 
 #define MEMORY_INIT_ERR "ERR - Fatal error during memory initialization: "
 #define OPCODE_DECODE_ERR "ERR - Fatal error during opcode decoding: "
+#define RUNTIME_ERR "ERR - Fatal error during run time: "
 
-int debug = false;
+int debug = true;
 
 // first valid address of program instructions
 const address PROG_START = 0x200;
@@ -124,8 +125,13 @@ static void not_implemented(chip_8_cpu cpu, opcode instr) {
     shutdown_cpu(cpu, 1);
 }
 
+static void stack_overflow(chip_8_cpu cpu) {
+    fprintf(stderr, RUNTIME_ERR "'Call stack overflow on opcode CALL'\n");
+    shutdown_cpu(cpu, 1);
+}
+
 static void stack_underflow(chip_8_cpu cpu) {
-    fprintf(stderr, OPCODE_DECODE_ERR "Call stack empty but got opcode RET\n");
+    fprintf(stderr, RUNTIME_ERR "Call stack empty but got opcode RET\n");
     shutdown_cpu(cpu, 1);
 }
 
@@ -160,10 +166,15 @@ static inline address get_last_three_nibbles(opcode instr) {
 
 static void handle_1_opcode(opcode instr, chip_8_cpu cpu) {
     cpu->performed_jump = true;
+    fprintf(stderr, "Got address in JUMP: %X\n", get_last_three_nibbles(instr));
     cpu->program_counter = get_last_three_nibbles(instr);
 }
 
 static void handle_2_opcode(opcode instr, chip_8_cpu cpu) {
+    if (cpu->stack_pointer == STACK_SIZE) {
+        stack_overflow(cpu);
+    }
+
     cpu->performed_jump = true;
     cpu->stack[cpu->stack_pointer] = cpu->program_counter;
     cpu->stack_pointer = cpu->stack_pointer + 1;
@@ -183,9 +194,9 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
             return handle_0_opcode(instr, cpu);
         case 0x1:
             return handle_1_opcode(instr, cpu);
-            /*
         case 0x2:
             return handle_2_opcode(instr, cpu);
+            /*
         case 0x3:
             return handle_3_opcode(instr, cpu);
         case 0x4:
@@ -221,6 +232,7 @@ void execute_loop(chip_8_cpu cpu) {
         if (debug) {
             fprintf(stderr, "Execution loop info:\n");
             fprintf(stderr, "\tProgram counter: %d\n", cpu->program_counter);
+            fprintf(stderr, "\tStack pointer: %d\n", cpu->stack_pointer);
             fprintf(stderr, "\n--------------\n\n");
         }
 

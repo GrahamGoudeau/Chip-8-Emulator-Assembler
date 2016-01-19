@@ -47,7 +47,10 @@ class OpCode:
         return OpCode.build_opcode('0', hex_addr[0], hex_addr[1], hex_addr[2])
 
     def build_jp(self, address):
-        hex_addr = self.get_address_or_invalid(address)
+        if OpCode.could_be_label(address):
+            hex_addr = self.resolve_label_or_invalid(address)
+        else:
+            hex_addr = self.get_address_or_invalid(address)
         return OpCode.build_opcode('1', hex_addr[0], hex_addr[1], hex_addr[2])
 
     def build_call(self, address):
@@ -74,8 +77,10 @@ class OpCode:
         value = self.convert_val_to_hex_or_invalid(value, max_len=2)
         return OpCode.build_opcode('6', reg_num, value[0], value[1])
 
-    def build_add_byte_reg(self):
-        pass
+    def build_add_byte_reg(self, register, value):
+        reg_num = self.get_register_or_invalid(register)
+        value = self.convert_val_to_hex_or_invalid(value, max_len=2)
+        return OpCode.build_opcode('7', reg_num, value[0], value[1])
 
     def encoded(self):
         if self.name not in self.opcode_arity_func_map:

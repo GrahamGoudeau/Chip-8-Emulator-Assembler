@@ -196,6 +196,14 @@ static void handle_3_opcode(opcode instr, chip_8_cpu cpu) {
     }
 }
 
+static void handle_4_opcode(opcode instr, chip_8_cpu cpu) {
+    uint8_t last_byte = get_last_byte(instr);
+    nibble reg_number = get_second_nibble(instr);
+    if (cpu->registers[reg_number] != last_byte) {
+        cpu->skip_opcode = true;
+    }
+}
+
 static inline nibble get_first_nibble(opcode instr) {
     return (instr & 0xF000) >> 12;
 }
@@ -211,9 +219,9 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
             return handle_2_opcode(instr, cpu);
         case 0x3:
             return handle_3_opcode(instr, cpu);
-            /*
         case 0x4:
             return handle_4_opcode(instr, cpu);
+            /*
         case 0x5:
             return handle_5_opcode(instr, cpu);
         case 0x6:
@@ -242,14 +250,19 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
 
 void execute_loop(chip_8_cpu cpu) {
     while (1) {
+        opcode instr = fetch_opcode(cpu);
         if (debug) {
-            fprintf(stderr, "Execution loop info:\n");
+            fprintf(stderr, "Execution loop info -- before processing %04X:\n", instr);
             fprintf(stderr, "\tProgram counter: %d\n", cpu->program_counter);
             fprintf(stderr, "\tStack pointer: %d\n", cpu->stack_pointer);
+            fprintf(stderr, "\tRegister contents:\n");
+            int i;
+            for (i = 0; i < NUM_REGISTERS; i++) {
+                fprintf(stderr, "\t\tReg %d: %hu\n", i, cpu->registers[i]);
+            }
             fprintf(stderr, "\n--------------\n\n");
         }
 
-        opcode instr = fetch_opcode(cpu);
         execute_opcode(instr, cpu);
         if (cpu->performed_jump) {
             // reset jumped flag

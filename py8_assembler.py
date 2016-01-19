@@ -11,6 +11,7 @@ class OpCode:
         self.name = name.upper()
         self.args = args
         self.opcode_arity_func_map = {
+            'HALT': (0, self.build_halt),
             'CLS': (0, self.build_cls),
             'RET': (0, self.build_ret),
             'SYS': (1, self.build_sys),
@@ -20,7 +21,32 @@ class OpCode:
             'SNE_BYTE': (2, self.build_sne_byte),
             'SE_REG': (2, self.build_se_reg),
             'LD_BYTE': (2, self.build_ld_byte),
-            'ADD_BYTE_REG': (2, self.build_add_byte_reg)
+            'ADD_BYTE_REG': (2, self.build_add_byte_reg),
+            'LD_REG': (2, self.build_ld_reg),
+            'OR_REG': (2, self.build_or_reg),
+            'AND_REG': (2, self.build_and_reg),
+            'XOR_REG': (2, self.build_xor_reg),
+            'ADD_REG': (2, self.build_add_reg),
+            'SUB_REG': (2, self.build_sub_reg),
+            'SHR_REG': (1, self.build_shr_reg),
+            'SUBN_REG': (2, self.build_subn_reg),
+            'SHL_REG': (1, self.build_shl_reg),
+            'SNE_REG': (2, self.build_sne_reg),
+            'LD_ADDR': (1, self.build_ld_addr),
+            'JP_OFFSET': (1, self.build_jp_offset),
+            'RND_AND': (1, self.build_rnd_and),
+            'DRAW': (3, self.build_draw),
+            'SKIP_PRESS': (1, self.build_skip_press),
+            'SKIP_NPRESS': (1, self.build_skip_npress),
+            'LD_DELAY': (1, self.build_ld_delay),
+            'AWAIT_KEY': (1, self.build_await_key),
+            'SET_DELAY': (1, self.build_set_delay),
+            'SET_SOUND': (1, self.build_set_sound),
+            'LD_ADDR': (1, self.build_ld_addr),
+            'LD_SPRITE': (1, self.build_ld_sprite),
+            'STORE_BCD': (1, self.build_store_bcd),
+            'STORE_REGS': (1, self.build_store_regs),
+            'LD_REGS': (1, self.build_ld_regs)
         }
         self.line_num = line_num
         self.labels = labels
@@ -31,6 +57,9 @@ class OpCode:
             return '{Name: ' + self.name + ', Args:' + str(self.args) + '}'
         else:
             return '{Name: ' + self.name + ', Args:' + str(self.args) + ', line: ' + str(self.line_num) + '}'
+
+    def build_halt(self):
+        return OpCode.build_opcode('0', '0', '0', '0')
 
     def build_cls(self):
         return OpCode.build_opcode('0', '0', 'E', '0')
@@ -72,6 +101,115 @@ class OpCode:
         value = self.convert_val_to_hex_or_invalid(value, max_len=2)
         return OpCode.build_opcode('7', reg_num, value[0], value[1])
 
+    def build_ld_reg(self, register1, register2):
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('8', reg_num1, reg_num2, '0')
+
+    def build_or_reg(self, register1, register2):
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('8', reg_num1, reg_num2, '1')
+
+    def build_and_reg(self, register1, register2):
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('8', reg_num1, reg_num2, '2')
+
+    def build_xor_reg(self, register1, register2):
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('8', reg_num1, reg_num2, '3')
+
+    def build_add_reg(self, register1, register2):
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('8', reg_num1, reg_num2, '4')
+
+    def build_sub_reg(self, register1, register2):
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('8', reg_num1, reg_num2, '4')
+
+    def build_shr_reg(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('8', reg_num, '0', '6')
+
+    def build_subn_reg(self, register1, register2):
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('8', reg_num1, reg_num2, '7')
+
+    def build_shl_reg(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('8', reg_num, '0', 'E')
+
+    def build_sne_reg(self, register1, register2):
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('9', reg_num1, reg_num2, '0')
+
+    def build_ld_addr(self, address):
+        return self.build_address_opcode('A', address)
+
+    def build_jp_offset(self, address):
+        return self.build_address_opcode('B', address)
+
+    def build_rnd_and(self, register, value):
+        hex_val = self.convert_val_to_hex_or_invalid(value, max_len=2)
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('C', reg_num, hex_val[0], hex_val[1])
+
+    def build_draw(self, register1, register2, nibble):
+        hex_nib = self.convert_val_to_hex_or_invalid(value, max_len=1)
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('D', reg_num1, reg_num2, hex_nib)
+
+    def build_skip_press(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('E', reg_num, '9', 'E')
+
+    def build_skip_npress(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('E', reg_num, 'A', '1')
+
+    def build_ld_delay(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('F', reg_num, '0', '7')
+
+    def build_await_key(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('F', reg_num, '0', 'A')
+
+    def build_set_delay(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('F', reg_num, '1', '5')
+
+    def build_set_sound(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('F', reg_num, '1', '8')
+
+    def build_ld_addr(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('F', reg_num, '1', 'E')
+
+    def build_ld_sprite(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('F', reg_num, '2', '9')
+
+    def build_store_bcd(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('F', reg_num, '3', '3')
+
+    def build_store_regs(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('F', reg_num, '5', '5')
+
+    def build_ld_regs(self, register):
+        reg_num = self.get_register_or_invalid(register)
+        return OpCode.build_opcode('F', reg_num, '6', '5')
+
     def encoded(self):
         if self.name not in self.opcode_arity_func_map:
             self.invalid()
@@ -111,7 +249,7 @@ class OpCode:
     # returns the hex value of the register
     def get_register_or_invalid(self, register):
         if not OpCode.is_valid_reg(register):
-            self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")
+            self.invalid(message="Register number '" + register + "' not of the form V[0-9a-fA-F]")
 
         return register[1]
 

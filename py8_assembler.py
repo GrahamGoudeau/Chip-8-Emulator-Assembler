@@ -136,12 +136,37 @@ def assemble(input_file, output_file):
     for opcode in opcodes:
         print str(opcode)
     with open(output_file, 'wb') as f:
-        for opcode in opcodes:
-            f.write(opcode.encoded())
+        for code in encoded:
+            f.write(code)
 
+def print_usage():
+    print textwrap.dedent("""\
+        Usage: [script_name] [input.as] [output.ch8]
+
+        (input and output args are sensitive to file extension)
+
+        Grammar (not case-sensitive):
+
+        Types listed below:
+            * register: of the form V[0-9a-fA-F]
+            * value: two byte hex or decimal literal
+                (hex values must be preceded by 0x, otherwise assumed decimal)
+            * address: 3-byte memory address
+
+        CLS : clear the screen
+        RET : return to the address on top of the call stack
+        JP {address} : jump to the given address
+        CALL {address} : jump to the address, and
+            put current program counter on top of call stack
+        SE_BYTE {register} {value} : skip the next instruction
+            if register V# is equal to the value
+        SNE_BYTE {register} {value} : same as above, but if NOT equal
+        SE_REG {register} {register} : skip the next instruction if the two registers are equal
+        LD_BYTE {register} {value} : load the value into the given register
+        """)
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        print 'Usage: [input.as] [output.ch8]'
+        print_usage()
         sys.exit()
 
     if sys.argv[1][-3:] == '.as' and sys.argv[2][-4:] == '.ch8':

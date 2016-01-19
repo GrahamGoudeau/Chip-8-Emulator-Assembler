@@ -14,7 +14,7 @@ opcode_num_args_pairs = {
 }
 
 def is_valid_reg(reg):
-    return re.search('^V[0-9a-fA-F]$', reg) is not None
+    return re.search('^[Vv][0-9a-fA-F]$', reg) is not None
 
 # arg: string
 def convert_val_to_hex(num, zfill=0):
@@ -87,6 +87,16 @@ class OpCode:
 
                 return build_byte('4', reg_number) + build_byte(value[0], value[1])
 
+            if self.name == 'SE_REG':
+                reg_number_1 = self.args[0]
+                reg_number_2 = self.args[1]
+                if not is_valid_reg(reg_number_1):
+                    self.invalid(message="Register number '" + reg_number_1 + "' not of the form V[0-9a-fA-F]")
+                if not is_valid_reg(reg_number_2):
+                    self.invalid(message="Register number '" + reg_number_2 + "' not of the form V[0-9a-fA-F]")
+
+                return build_byte('5', reg_number_1[1]) + build_byte(reg_number_2[1], '0')
+
 
 
         else:
@@ -130,6 +140,6 @@ if __name__ == '__main__':
     if sys.argv[1][-3:] == '.as' and sys.argv[2][-4:] == '.ch8':
         assemble(sys.argv[1], sys.argv[2])
     elif sys.argv[1][-3:] != '.as':
-        print 'Unrecognized input assembly filetype: {}'.format(sys.argv[1][-3:])
+        print 'Unrecognized input assembly filetype: {} (expected .as)'.format(sys.argv[1][-3:])
     elif sys.argv[2][-4:] != '.ch8':
-        print 'Unrecognized output filetype: {}'.format(sys.argv[2][-4:])
+        print 'Unrecognized output filetype: {} (expected .ch8)'.format(sys.argv[2][-4:])

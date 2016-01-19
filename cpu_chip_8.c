@@ -250,6 +250,10 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
 
 void execute_loop(chip_8_cpu cpu) {
     while (1) {
+        if (cpu->program_counter >= MEMORY_SIZE || cpu->program_counter < 0) {
+            fprintf(stderr, "ERR - Fatal memory error: program counter at invalid location: '%d'\n", cpu->program_counter);
+            shutdown_cpu(cpu, 1);
+        }
         opcode instr = fetch_opcode(cpu);
         if (debug) {
             fprintf(stderr, "Execution loop info -- before processing %04X:\n", instr);

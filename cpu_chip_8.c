@@ -182,7 +182,9 @@ static void handle_2_opcode(opcode instr, chip_8_cpu cpu) {
     }
 
     cpu->performed_jump = true;
-    cpu->stack[cpu->stack_pointer] = cpu->program_counter;
+
+    // jump back to the instruction AFTER the CALL opcode
+    cpu->stack[cpu->stack_pointer] = cpu->program_counter + 1;
     cpu->stack_pointer = cpu->stack_pointer + 1;
 
     address new_program_counter = get_last_three_nibbles(instr);

@@ -154,6 +154,7 @@ static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
             cpu->stack_pointer = stack_pointer;
             cpu->program_counter = cpu->stack[stack_pointer];
             cpu->performed_jump = true;
+            break;
         }
         default:
             not_implemented(cpu, instr);

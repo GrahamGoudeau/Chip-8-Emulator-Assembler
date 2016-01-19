@@ -135,6 +135,11 @@ static void stack_underflow(chip_8_cpu cpu) {
     shutdown_cpu(cpu, 1);
 }
 
+static void invalid_opcode(chip_8_cpu cpu, opcode instr) {
+    fprintf(stderr, RUNTIME_ERR "'Unrecognized opcode: %04X'\n", instr);
+    shutdown_cpu(cpu, 1);
+}
+
 static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
     if (instr == 0x00) {
         fprintf(stderr, "Got opcode 0x0000, quitting...\n");
@@ -188,6 +193,14 @@ static inline nibble get_second_nibble(opcode instr) {
     return (instr & 0x0F00) >> 8;
 }
 
+static inline nibble get_third_nibble(opcode instr) {
+    return (instr & 0x00F0) >> 4;
+}
+
+static inline nibble get_last_nibble(opcode instr) {
+    return (instr & 0x000F);
+}
+
 static void handle_3_opcode(opcode instr, chip_8_cpu cpu) {
     uint8_t last_byte = get_last_byte(instr);
     nibble reg_number = get_second_nibble(instr);
@@ -201,6 +214,19 @@ static void handle_4_opcode(opcode instr, chip_8_cpu cpu) {
     nibble reg_number = get_second_nibble(instr);
     if (cpu->registers[reg_number] != last_byte) {
         cpu->skip_opcode = true;
+    }
+}
+
+static void handle_5_opcode(opcode instr, chip_8_cpu cpu) {
+    if (get_last_nibble(instr) == 0) {
+        nibble reg_number_1 = get_second_nibble(instr);
+        nibble reg_number_2 = get_third_nibble(instr);
+        if (cpu->registers[reg_number_1] == cpu->registers[reg_number_2]) {
+            cpu->skip_opcode = true;
+        }
+    }
+    else {
+        invalid_opcode(cpu, instr);
     }
 }
 
@@ -221,9 +247,9 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
             return handle_3_opcode(instr, cpu);
         case 0x4:
             return handle_4_opcode(instr, cpu);
-            /*
         case 0x5:
             return handle_5_opcode(instr, cpu);
+            /*
         case 0x6:
             return handle_6_opcode(instr, cpu);
         case 0x7:
@@ -245,13 +271,15 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
         case 0xF:
             return handle_F_opcode(instr, cpu);
             */
+        default:
+            invalid_opcode(cpu, instr);
     }
 }
 
 void execute_loop(chip_8_cpu cpu) {
     while (1) {
-        if (cpu->program_counter >= MEMORY_SIZE || cpu->program_counter < 0) {
-            fprintf(stderr, "ERR - Fatal memory error: program counter at invalid location: '%d'\n", cpu->program_counter);
+        if (cpu->program_counter >= MEMORY_SIZE) {
+            fprintf(stderr, "ERR - Fatal memory error: invalid access at memory cell: '%d'\n", cpu->program_counter);
             shutdown_cpu(cpu, 1);
         }
         opcode instr = fetch_opcode(cpu);

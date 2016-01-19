@@ -8,8 +8,9 @@ opcode_num_args_pairs = {
     'SYS': 1,
     'JP': 1,
     'CALL': 1,
-    'SE': 2,
-    'SNE': 2
+    'SE_BYTE': 2,
+    'SNE_BYTE': 2,
+    'SE_REG': 2
 }
 
 def is_valid_reg(reg):
@@ -22,10 +23,6 @@ def convert_val_to_hex(num, zfill=0):
 # example: append_address('0', '145')
 # expects len(address) == 3
 def append_address(prefix, address):
-    '''
-    first_byte = chr(int(prefix, base=16) * 16 + int(address[0], base=16))
-    second_byte = chr(int(address[1], base=16) * 16 + int(address[2], base=16))
-    '''
     first_byte = build_byte(prefix, address[0])
     second_byte = build_byte(address[1], address[2])
     return first_byte + second_byte
@@ -68,7 +65,7 @@ class OpCode:
                 address = convert_val_to_hex(self.args[0], zfill=3)
                 return append_address('2', address)
             # 3xkk
-            if self.name == 'SE':
+            if self.name == 'SE_BYTE':
                 reg_number = self.args[0]
                 if not is_valid_reg(reg_number):
                     self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")
@@ -78,7 +75,7 @@ class OpCode:
                     self.invalid(message="SE compare value must be less than 0xff")
                 return build_byte('3', reg_number) + build_byte(value[0], value[1])
 
-            if self.name == 'SNE':
+            if self.name == 'SNE_BYTE':
                 reg_number = self.args[0]
                 if not is_valid_reg(reg_number):
                     self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")

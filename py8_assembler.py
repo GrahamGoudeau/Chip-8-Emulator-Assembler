@@ -1,4 +1,6 @@
 import sys
+import textwrap
+import sys
 import re
 
 # register numbers must be given in hexadecimal
@@ -10,7 +12,8 @@ opcode_num_args_pairs = {
     'CALL': 1,
     'SE_BYTE': 2,
     'SNE_BYTE': 2,
-    'SE_REG': 2
+    'SE_REG': 2,
+    'LD_BYTE': 2
 }
 
 def is_valid_reg(reg):
@@ -97,13 +100,17 @@ class OpCode:
 
                 return build_byte('5', reg_number_1[1]) + build_byte(reg_number_2[1], '0')
 
-
+            if self.name == 'LD_BYTE':
+                reg_number = self.args[0]
+                if not is_valid_reg(reg_number):
+                    self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")
+                value = convert_val_to_hex(self.args[1], zfill=2)
+                return build_byte('6', reg_number[1]) + build_byte(value[0], value[1])
 
         else:
             self.invalid()
 
     def invalid(self, message=None):
-        import sys
         print 'Invalid opcode: {}'.format(str(self))
         if message is not None:
             print message

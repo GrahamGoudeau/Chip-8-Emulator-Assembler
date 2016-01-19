@@ -230,6 +230,12 @@ static void handle_5_opcode(opcode instr, chip_8_cpu cpu) {
     }
 }
 
+static void handle_6_opcode(opcode instr, chip_8_cpu cpu) {
+    nibble reg_number = get_second_nibble(instr);
+    uint8_t last_byte = get_last_byte(instr);
+    cpu->registers[reg_number] = last_byte;
+}
+
 static inline nibble get_first_nibble(opcode instr) {
     return (instr & 0xF000) >> 12;
 }
@@ -249,9 +255,9 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
             return handle_4_opcode(instr, cpu);
         case 0x5:
             return handle_5_opcode(instr, cpu);
-            /*
         case 0x6:
             return handle_6_opcode(instr, cpu);
+            /*
         case 0x7:
             return handle_7_opcode(instr, cpu);
         case 0x8:

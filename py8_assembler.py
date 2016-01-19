@@ -3,8 +3,11 @@ import textwrap
 import sys
 import re
 
+comment_start = '#'
+label_start = '$LABEL'
+
 class OpCode:
-    def __init__(self, name='', args=[], line_num=None):
+    def __init__(self, name='', args=[], line_num=None, labels={}):
         self.name = name.upper()
         self.args = args
         self.opcode_parity_func_map = {
@@ -20,6 +23,7 @@ class OpCode:
             'ADD_BYTE_REG': (2, self.build_add_byte_reg)
         }
         self.line_num = line_num
+        self.labels = labels
 
     def __str__(self):
         if self.line_num is None:
@@ -75,7 +79,7 @@ class OpCode:
         func_arity, func = self.opcode_parity_func_map[self.name]
 
         if len(self.args) != func_arity:
-            self.invalid(message='Mismatched opcode arity')
+            self.invalid(message='Mismatched opcode arity; expected {} args'.format(func_arity))
 
         return func(*self.args)
 
@@ -106,6 +110,8 @@ class OpCode:
 
         return result
 
+    # given four characters, combine them as hex digits
+    # e.g., build_opcode('a', 'b', 'f', '3') == 0xabf3
     @staticmethod
     def build_opcode(dig1, dig2, dig3, dig4):
         # ex: when passed '3', 'f', builds 0x3f
@@ -120,22 +126,34 @@ class OpCode:
             print message
         sys.exit()
 
-def convert_line_to_opcode(line):
-    if len(line) == 0:
-        return None
-    return OpCode(name=line[0], args=line[1:])
 
 def assemble(input_file, output_file):
-    instructions = []
-    with open(input_file, 'r') as f:
-        instructions = [line.split() for line in f]
-
     opcodes = []
-    for instr in instructions:
-        opcode = convert_line_to_opcode(instr)
-        if opcode is not None:
-            opcodes.append(opcode)
+    labels = {}
+    with open(input_file, 'r') as f:
+        for index, line in enumerate(f):
+            while len(line) > 0 and line[0].isspace():
+                line = line[1:]
 
+            if not line or line[0] == comment_start:
+                continue
+
+            line = line.split()
+            if line[0].upper() == label_start and len(line) == 2:
+                # set the label to the NEXT opcode
+                labels[line[1]] = len(opcodes) + 1
+            elif line[0].upper() == label_start:
+                print 'Fatal error: Invalid label format: {}'.format(line)
+                sys.exit()
+            else:
+                opcodes.append(OpCode(name=line[0], args=line[1:], labels=labels))
+
+    if line[0].upper() == label_start:
+        print 'Fatal error: Cannot end .as file with a label'
+        sys.exit()
+
+    print 'labels:'
+    print labels
     encoded = map(lambda opcode: opcode.encoded(), opcodes)
     for opcode in opcodes:
         print str(opcode)

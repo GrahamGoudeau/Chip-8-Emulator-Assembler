@@ -254,7 +254,10 @@ class OpCode:
         return register[1]
 
     def convert_val_to_hex_or_invalid(self, num, max_len=0):
-        result = hex(int(num, base=0))[2:].zfill(max_len)
+        numeric_result = hex(int(num, base=0))
+        if int(numeric_result, base=16) < 0:
+            self.invalid(message="Cannot give negative numeric literals")
+        result = numeric_result[2:].zfill(max_len)
         if max_len != 0 and len(result) > max_len:
             self.invalid(message="Invalid conversion to hex value: '{}'; must be {} hex digits".format(num, max_len))
 

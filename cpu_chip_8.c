@@ -244,6 +244,80 @@ static void handle_7_opcode(opcode instr, chip_8_cpu cpu) {
     cpu->registers[reg_number] += last_byte;
 }
 
+static void handle_8_opcode(opcode instr, chip_8_cpu cpu) {
+    nibble indicator = get_last_nibble(instr);
+    nibble reg_num1 = get_second_nibble(instr);
+    nibble reg_num2 = get_third_nibble(instr);
+    chip_8_register result;
+    chip_8_register vx = cpu->registers[reg_num1];
+    chip_8_register vy = cpu->registers[reg_num2];
+
+    switch (indicator) {
+        case 0:
+            result = vy;
+            break;
+        case 1:
+            result = vx | vy;
+            break;
+        case 2:
+            result = vx & vy;
+            break;
+        case 3:
+            result = vx ^ vy;
+            break;
+        case 4:
+            result = vx + vy;
+            if ((int)vx + (int)vy > 255) {
+                cpu->registers[0xf] = 1;
+            }
+            else {
+                cpu->registers[0xf] = 0;
+            }
+            break;
+        case 5:
+            result = vx - vy;
+            if (vx > vy) {
+                cpu->registers[0xf] = 1;
+            }
+            else {
+                cpu->registers[0xf] = 0;
+            }
+            break;
+        case 6:
+            if ((vx & 0x01) == 1) {
+                cpu->registers[0xf] = 1;
+            }
+            else {
+                cpu->registers[0xf] = 0;
+            }
+            result = vx >> 1;
+            break;
+
+        case 7:
+            if (vy > vx) {
+                cpu->registers[0xf] = 1;
+            }
+            else {
+                cpu->registers[0xf] = 0;
+            }
+            result = vy - vx;
+            break;
+        case 0xE:
+            if ((vx & 0x80) == 0x80) {
+                cpu->registers[0xf] = 1;
+            }
+            else {
+                cpu->registers[0xf] = 0;
+            }
+            result = vx << 1;
+            break;
+        default:
+            not_implemented(cpu, instr);
+    }
+
+    cpu->registers[reg_num1] = result;
+}
+
 static inline nibble get_first_nibble(opcode instr) {
     return (instr & 0xF000) >> 12;
 }
@@ -267,9 +341,9 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
             return handle_6_opcode(instr, cpu);
         case 0x7:
             return handle_7_opcode(instr, cpu);
-            /*
         case 0x8:
             return handle_8_opcode(instr, cpu);
+            /*
         case 0x9:
             return handle_9_opcode(instr, cpu);
         case 0xA:

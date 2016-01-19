@@ -3,112 +3,116 @@ import textwrap
 import sys
 import re
 
-# register numbers must be given in hexadecimal
-opcode_num_args_pairs = {
-    'CLS': 0,
-    'RET': 0,
-    'SYS': 1,
-    'JP': 1,
-    'CALL': 1,
-    'SE_BYTE': 2,
-    'SNE_BYTE': 2,
-    'SE_REG': 2,
-    'LD_BYTE': 2
-}
-
-def is_valid_reg(reg):
-    return re.search('^[Vv][0-9a-fA-F]$', reg) is not None
-
-# arg: string
-def convert_val_to_hex(num, zfill=0):
-    return hex(int(num, base=0))[2:].zfill(zfill)
-
-# example: append_address('0', '145')
-# expects len(address) == 3
-def append_address(prefix, address):
-    first_byte = build_byte(prefix, address[0])
-    second_byte = build_byte(address[1], address[2])
-    return first_byte + second_byte
-
-# when passed '3', 'f', builds 0x3f
-def build_byte(hex_digit_1, hex_digit_2):
-    return chr(int(hex_digit_1, base=16) * 16 + int(hex_digit_2, base=16))
-
 class OpCode:
-    def __init__(self, name='', args=[]):
+    def __init__(self, name='', args=[], line_num=None):
         self.name = name.upper()
-        #self.num_args = num_args
         self.args = args
+        self.opcode_parity_func_map = {
+            'CLS': (0, self.build_cls),
+            'RET': (0, self.build_ret),
+            'SYS': (1, self.build_sys),
+            'JP': (1, self.build_jp),
+            'CALL': (1, self.build_call),
+            'SE_BYTE': (2, self.build_se_byte),
+            'SNE_BYTE': (2, self.build_sne_byte),
+            'SE_REG': (2, self.build_se_reg),
+            'LD_BYTE': (2, self.build_ld_byte),
+            'ADD_BYTE_REG': (2, self.build_add_byte_reg)
+        }
+        self.line_num = line_num
 
     def __str__(self):
-        return self.name + ' ' + str(self.args)
+        if self.line_num is None:
+            return '{Name: ' + self.name + ', Args:' + str(self.args) + '}'
+        else:
+            return '{Name: ' + self.name + ', Args:' + str(self.args) + ', line: ' + str(self.line_num) + '}'
+
+    def build_cls(self):
+        return OpCode.build_opcode('0', '0', 'E', '0')
+
+    def build_ret(self):
+        return OpCode.build_opcode('0', '0', 'E', 'E')
+
+    def build_sys(self, address):
+        hex_addr = self.get_address_or_invalid(address)
+        return OpCode.build_opcode('0', hex_addr[0], hex_addr[1], hex_addr[2])
+
+    def build_jp(self, address):
+        hex_addr = self.get_address_or_invalid(address)
+        return OpCode.build_opcode('1', hex_addr[0], hex_addr[1], hex_addr[2])
+
+    def build_call(self, address):
+        hex_addr = self.get_address_or_invalid(address)
+        return OpCode.build_opcode('2', hex_addr[0], hex_addr[1], hex_addr[2])
+
+    def build_se_byte(self, register, value):
+        reg_num = self.get_register_or_invalid(register)
+        value = self.convert_val_to_hex_or_invalid(value, max_len=2)
+        return OpCode.build_opcode('3', reg_num, value[0], value[1])
+
+    def build_sne_byte(self, register, value):
+        reg_num = self.get_register_or_invalid(register)
+        value = self.convert_val_to_hex_or_invalid(value, max_len=2)
+        return OpCode.build_opcode('4', reg_num, value[0], value[1])
+
+    def build_se_reg(self, register1, register2):
+        reg_num1 = self.get_register_or_invalid(register1)
+        reg_num2 = self.get_register_or_invalid(register2)
+        return OpCode.build_opcode('5', reg_num1, reg_num2, '0')
+
+    def build_ld_byte(self, register, value):
+        reg_num = self.get_register_or_invalid(register)
+        value = self.convert_val_to_hex_or_invalid(value, max_len=2)
+        return OpCode.build_opcode('6', reg_num, value[0], value[1])
+
+    def build_add_byte_reg(self):
+        pass
 
     def encoded(self):
-        if len(self.args) == opcode_num_args_pairs.get(self.name, None):
-            # 00E0
-            if self.name == 'CLS':
-                return chr(0x00) + chr(0xE0)
-            # 00EE
-            if self.name == 'RET':
-                return chr(0x00) + chr(0xEE)
-            # not implemented
-            if self.name == 'SYS':
-                address = convert_val_to_hex(self.args[0], zfill=3)
-                if len(address) > 3:
-                    self.invalid()
-                return append_address('0', address)
-            # 1nnn
-            if self.name == 'JP':
-                address = convert_val_to_hex(self.args[0], zfill=3)
-                if len(address) > 3:
-                    self.invalid()
-                return append_address('1', address)
-            # 2nnn
-            if self.name == 'CALL':
-                address = convert_val_to_hex(self.args[0], zfill=3)
-                return append_address('2', address)
-            # 3xkk
-            if self.name == 'SE_BYTE':
-                reg_number = self.args[0]
-                if not is_valid_reg(reg_number):
-                    self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")
-                reg_number = reg_number[1]
-                value = convert_val_to_hex(self.args[1], zfill=2)
-                if len(value) > 2:
-                    self.invalid(message="SE compare value must be less than 0xff")
-                return build_byte('3', reg_number) + build_byte(value[0], value[1])
-
-            if self.name == 'SNE_BYTE':
-                reg_number = self.args[0]
-                if not is_valid_reg(reg_number):
-                    self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")
-
-                reg_number = reg_number[1]
-                value = convert_val_to_hex(self.args[1], zfill=2)
-                if len(value) > 2:
-                    self.invalid(message="SE compare value must be less than 0xff")
-
-                return build_byte('4', reg_number) + build_byte(value[0], value[1])
-
-            if self.name == 'SE_REG':
-                reg_number_1 = self.args[0]
-                reg_number_2 = self.args[1]
-                if not is_valid_reg(reg_number_1):
-                    self.invalid(message="Register number '" + reg_number_1 + "' not of the form V[0-9a-fA-F]")
-                if not is_valid_reg(reg_number_2):
-                    self.invalid(message="Register number '" + reg_number_2 + "' not of the form V[0-9a-fA-F]")
-
-                return build_byte('5', reg_number_1[1]) + build_byte(reg_number_2[1], '0')
-
-            if self.name == 'LD_BYTE':
-                reg_number = self.args[0]
-                if not is_valid_reg(reg_number):
-                    self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")
-                value = convert_val_to_hex(self.args[1], zfill=2)
-                return build_byte('6', reg_number[1]) + build_byte(value[0], value[1])
-
-        else:
+        if self.name not in self.opcode_parity_func_map:
             self.invalid()
+
+        func_arity, func = self.opcode_parity_func_map[self.name]
+
+        if len(self.args) != func_arity:
+            self.invalid(message='Mismatched opcode arity')
+
+        return func(*self.args)
+
+    # expects prefix to be a single hex character
+    # guarantees to return a 3-digit long hex value
+    def get_address_or_invalid(self, address):
+        hex_addr = self.convert_val_to_hex_or_invalid(address, max_len=3)
+        if len(hex_addr) > 3:
+            self.invalid(message="Invalid address: '{}'".format(address))
+        return hex_addr
+
+    @staticmethod
+    def is_valid_reg(reg):
+        return re.search('^[Vv][0-9a-fA-F]$', reg) is not None
+
+    # expects a register of the form 'V#'
+    # returns the hex value of the register
+    def get_register_or_invalid(self, register):
+        if not OpCode.is_valid_reg(register):
+            self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")
+
+        return register[1]
+
+    def convert_val_to_hex_or_invalid(self, num, max_len=0):
+        result = hex(int(num, base=0))[2:].zfill(max_len)
+        if max_len != 0 and len(result) > max_len:
+            self.invalid(message="Invalid conversion to hex value: '{}'; must be {} hex digits".format(num, max_len))
+
+        return result
+
+    @staticmethod
+    def build_opcode(dig1, dig2, dig3, dig4):
+        # ex: when passed '3', 'f', builds 0x3f
+        def build_byte(hex_digit_1, hex_digit_2):
+            return chr(int(hex_digit_1, base=16) * 16 + int(hex_digit_2, base=16))
+
+        return build_byte(dig1, dig2) + build_byte(dig3, dig4)
 
     def invalid(self, message=None):
         print 'Invalid opcode: {}'.format(str(self))
@@ -163,6 +167,8 @@ def print_usage():
         SNE_BYTE {register} {value} : same as above, but if NOT equal
         SE_REG {register} {register} : skip the next instruction if the two registers are equal
         LD_BYTE {register} {value} : load the value into the given register
+        ADD_BYTE_REG {register} {value} : add the value to the value in
+            the register and store back in the same register
         """)
 if __name__ == '__main__':
     if len(sys.argv) != 3:

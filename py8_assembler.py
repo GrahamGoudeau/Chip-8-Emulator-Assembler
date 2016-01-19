@@ -21,7 +21,7 @@ class OpCode:
             'SNE_BYTE': (2, self.build_sne_byte),
             'SE_REG': (2, self.build_se_reg),
             'LD_BYTE': (2, self.build_ld_byte),
-            'ADD_BYTE_REG': (2, self.build_add_byte_reg),
+            'ADD_BYTE': (2, self.build_add_byte_reg),
             'LD_REG': (2, self.build_ld_reg),
             'OR_REG': (2, self.build_or_reg),
             'AND_REG': (2, self.build_and_reg),
@@ -372,7 +372,7 @@ def print_usage():
         SNE_BYTE {register} {value} : same as above, but if NOT equal
         SE_REG {register} {register} : skip the next instruction if the two registers are equal
         LD_BYTE {register} {value} : load the value into the given register
-        ADD_BYTE_REG {register} {value} : add the value to the value in
+        ADD_BYTE {register} {value} : add the value to the value in
             the register and store back in the same register
         """)
 if __name__ == '__main__':

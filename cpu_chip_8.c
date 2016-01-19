@@ -173,18 +173,17 @@ static void handle_2_opcode(opcode instr, chip_8_cpu cpu) {
 }
 
 static inline nibble get_first_nibble(opcode instr) {
-    return (instr & 0xF000) >> 6;
+    return (instr & 0xF000) >> 12;
 }
 
 static void execute_opcode(opcode instr, chip_8_cpu cpu) {
     nibble first_nibble = get_first_nibble(instr);
-    if (debug) fprintf(stderr, "Got nibble: %X\n", first_nibble);
     switch (first_nibble) {
         case 0x0:
             return handle_0_opcode(instr, cpu);
-            /*
         case 0x1:
             return handle_1_opcode(instr, cpu);
+            /*
         case 0x2:
             return handle_2_opcode(instr, cpu);
         case 0x3:

@@ -191,7 +191,7 @@ def assemble(input_file, output_file):
                 parse_opcode(line, opcodes, labels)
             first_line = False
 
-    if line[0].upper() == label_start:
+    if opcodes and line[0].upper() == label_start:
         print 'Fatal error: Cannot end .as file with a label'
         sys.exit()
 

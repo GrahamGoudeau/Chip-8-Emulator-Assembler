@@ -184,6 +184,18 @@ static void handle_2_opcode(opcode instr, chip_8_cpu cpu) {
     cpu->program_counter = new_program_counter;
 }
 
+static inline nibble get_second_nibble(opcode instr) {
+    return (instr & 0x0F00) >> 8;
+}
+
+static void handle_3_opcode(opcode instr, chip_8_cpu cpu) {
+    uint8_t last_byte = get_last_byte(instr);
+    nibble reg_number = get_second_nibble(instr);
+    if (cpu->registers[reg_number] == last_byte) {
+        cpu->skip_opcode = true;
+    }
+}
+
 static inline nibble get_first_nibble(opcode instr) {
     return (instr & 0xF000) >> 12;
 }
@@ -197,9 +209,9 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
             return handle_1_opcode(instr, cpu);
         case 0x2:
             return handle_2_opcode(instr, cpu);
-            /*
         case 0x3:
             return handle_3_opcode(instr, cpu);
+            /*
         case 0x4:
             return handle_4_opcode(instr, cpu);
         case 0x5:

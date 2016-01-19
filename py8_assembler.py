@@ -24,6 +24,7 @@ class OpCode:
         }
         self.line_num = line_num
         self.labels = labels
+        self.memory_start = 0x200
 
     def __str__(self):
         if self.line_num is None:
@@ -38,7 +39,11 @@ class OpCode:
         return OpCode.build_opcode('0', '0', 'E', 'E')
 
     def build_sys(self, address):
-        hex_addr = self.get_address_or_invalid(address)
+        if OpCode.could_be_label(address):
+            hex_addr = self.resolve_label_or_invalid(address)
+        else:
+            hex_addr = self.get_address_or_invalid(address)
+
         return OpCode.build_opcode('0', hex_addr[0], hex_addr[1], hex_addr[2])
 
     def build_jp(self, address):
@@ -91,6 +96,18 @@ class OpCode:
             self.invalid(message="Invalid address: '{}'".format(address))
         return hex_addr
 
+    def resolve_label_or_invalid(self, label):
+        source_code_pos = self.labels.get(label, None)
+        if source_code_pos is None:
+            self.invalid(message="Unable to resolve label '{}'".format(label))
+
+        hex_address = self.convert_val_to_hex_or_invalid(str(source_code_pos + self.memory_start))
+
+        if len(hex_address) > 3:
+            self.invalid(message="Label '{}' translates to address out of range")
+
+        return hex_address
+
     @staticmethod
     def is_valid_reg(reg):
         return re.search('^[Vv][0-9a-fA-F]$', reg) is not None
@@ -120,24 +137,35 @@ class OpCode:
 
         return build_byte(dig1, dig2) + build_byte(dig3, dig4)
 
+    @staticmethod
+    def could_be_label(address):
+        return re.search('^[a-zA-Z]', address) is not None
+
     def invalid(self, message=None):
         print 'Invalid opcode: {}'.format(str(self))
         if message is not None:
             print message
         sys.exit()
 
-
 def assemble(input_file, output_file):
-    def parse_label(line, opcodes, labels):
+    def parse_label(line, opcodes, labels, first_line):
         first_token = line[0].upper()
         if first_token == label_start and len(line) == 2:
-            labels[line[1]] = len(opcodes) + 1
+            if not OpCode.could_be_label(line[1]):
+                print 'Fatal error: Label must start with alphabetical chracter'
+                sys.exit()
+
+            if not first_line:
+                labels[line[1]] = len(opcodes)
+            else:
+                labels[line[1]] = 0
             return True
         elif first_token == label_start:
             print 'Fatal error: Invalid label format: {}'.format(line)
             sys.exit()
 
         return False
+
     def parse_opcode(line, opcodes, labels):
         new_opcode = OpCode(name=line[0], args=line[1:], labels=labels)
         opcodes.append(new_opcode)
@@ -145,6 +173,9 @@ def assemble(input_file, output_file):
     opcodes = []
     labels = {}
     with open(input_file, 'r') as f:
+        # used to determine how to set a label on the first line
+        first_line = True
+
         for index, line in enumerate(f):
             while len(line) > 0 and line[0].isspace():
                 line = line[1:]
@@ -155,16 +186,15 @@ def assemble(input_file, output_file):
             line = line.split()
             first_token = line[0].upper()
             if first_token == label_start:
-                parse_label(line, opcodes, labels)
+                parse_label(line, opcodes, labels, first_line)
             else:
                 parse_opcode(line, opcodes, labels)
+            first_line = False
 
     if line[0].upper() == label_start:
         print 'Fatal error: Cannot end .as file with a label'
         sys.exit()
 
-    print 'labels:'
-    print labels
     encoded = map(lambda opcode: opcode.encoded(), opcodes)
     for opcode in opcodes:
         print str(opcode)

@@ -8,8 +8,12 @@ opcode_num_args_pairs = {
     'SYS': 1,
     'JP': 1,
     'CALL': 1,
-    'SE': 2
+    'SE': 2,
+    'SNE': 2
 }
+
+def is_valid_reg(reg):
+    return re.search('^V[0-9a-fA-F]$', reg) is not None
 
 # arg: string
 def convert_val_to_hex(num, zfill=0):
@@ -66,13 +70,27 @@ class OpCode:
             # 3xkk
             if self.name == 'SE':
                 reg_number = self.args[0]
-                if re.search('^V[0-9a-fA-F]$', reg_number) is None:
+                if not is_valid_reg(reg_number):
                     self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")
                 reg_number = reg_number[1]
                 value = convert_val_to_hex(self.args[1], zfill=2)
                 if len(value) > 2:
                     self.invalid(message="SE compare value must be less than 0xff")
                 return build_byte('3', reg_number) + build_byte(value[0], value[1])
+
+            if self.name == 'SNE':
+                reg_number = self.args[0]
+                if not is_valid_reg(reg_number):
+                    self.invalid(message="Register number '" + reg_number + "' not of the form V[0-9a-fA-F]")
+
+                reg_number = reg_number[1]
+                value = convert_val_to_hex(self.args[1], zfill=2)
+                if len(value) > 2:
+                    self.invalid(message="SE compare value must be less than 0xff")
+
+                return build_byte('4', reg_number) + build_byte(value[0], value[1])
+
+
 
         else:
             self.invalid()

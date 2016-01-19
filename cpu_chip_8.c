@@ -135,7 +135,7 @@ static void stack_underflow(chip_8_cpu cpu) {
     shutdown_cpu(cpu, 1);
 }
 
-static void invalid_opcode(chip_8_cpu cpu, opcode instr) {
+static void invalid_opcode(opcode instr, chip_8_cpu cpu) {
     fprintf(stderr, RUNTIME_ERR "'Unrecognized opcode: %04X'\n", instr);
     shutdown_cpu(cpu, 1);
 }
@@ -226,7 +226,7 @@ static void handle_5_opcode(opcode instr, chip_8_cpu cpu) {
         }
     }
     else {
-        invalid_opcode(cpu, instr);
+        invalid_opcode(instr, cpu);
     }
 }
 
@@ -278,7 +278,7 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
             return handle_F_opcode(instr, cpu);
             */
         default:
-            invalid_opcode(cpu, instr);
+            invalid_opcode(instr, cpu);
     }
 }
 

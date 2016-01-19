@@ -39,23 +39,13 @@ class OpCode:
         return OpCode.build_opcode('0', '0', 'E', 'E')
 
     def build_sys(self, address):
-        if OpCode.could_be_label(address):
-            hex_addr = self.resolve_label_or_invalid(address)
-        else:
-            hex_addr = self.get_address_or_invalid(address)
-
-        return OpCode.build_opcode('0', hex_addr[0], hex_addr[1], hex_addr[2])
+        return self.build_address_opcode('0', address)
 
     def build_jp(self, address):
-        if OpCode.could_be_label(address):
-            hex_addr = self.resolve_label_or_invalid(address)
-        else:
-            hex_addr = self.get_address_or_invalid(address)
-        return OpCode.build_opcode('1', hex_addr[0], hex_addr[1], hex_addr[2])
+        return self.build_address_opcode('1', address)
 
     def build_call(self, address):
-        hex_addr = self.get_address_or_invalid(address)
-        return OpCode.build_opcode('2', hex_addr[0], hex_addr[1], hex_addr[2])
+        return self.build_address_opcode('2', address)
 
     def build_se_byte(self, register, value):
         reg_num = self.get_register_or_invalid(register)
@@ -141,6 +131,19 @@ class OpCode:
             return chr(int(hex_digit_1, base=16) * 16 + int(hex_digit_2, base=16))
 
         return build_byte(dig1, dig2) + build_byte(dig3, dig4)
+
+    def build_address_opcode(self, prefix, address):
+        if OpCode.could_be_label(address):
+            hex_addr = self.resolve_label_or_invalid(address)
+        else:
+            hex_addr = self.get_address_or_invalid(address)
+
+        return OpCode.build_opcode(prefix, hex_addr[0], hex_addr[1], hex_addr[2])
+
+    def build_register_op(self, reg1, reg2, first_nibble, last_nibble):
+        reg_num1 = self.get_register_or_invalid(reg1)
+        reg_num2 = self.get_register_or_invalid(reg2)
+        return OpCode.build_opcode(first_nibble, reg_num1, reg_num2, last_nibble)
 
     @staticmethod
     def could_be_label(address):

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <time.h>
 #include "cpu_chip_8.h"
 
 #define MEMORY_SIZE 0x1000
@@ -61,6 +62,10 @@ chip_8_cpu initialize_cpu(void) {
     }
     cpu->performed_jump = false;
     cpu->skip_opcode = false;
+    cpu->halt = false;
+
+    // initialize random byte stream for RAND opcode
+    srand(time(NULL));
     return cpu;
 }
 

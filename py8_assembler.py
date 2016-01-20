@@ -60,7 +60,7 @@ class OpCode:
             return '{Name: ' + self.name + ', Args:' + str(self.args) + ', line: ' + str(self.line_num) + '}'
 
     def build_halt(self):
-        return OpCode.build_opcode('0', '0', '0', '0')
+        return OpCode.build_opcode('0', '0', 'F', 'D')
 
     def build_cls(self):
         return OpCode.build_opcode('0', '0', 'E', '0')

@@ -51,6 +51,7 @@ class OpCode:
         self.line_num = line_num
         self.labels = labels
         self.memory_start = 0x200
+        self.memory_size = 0x1000
 
     def __str__(self):
         if self.line_num is None:
@@ -236,7 +237,7 @@ class OpCode:
 
         hex_address = self.convert_val_to_hex_or_invalid(str(source_code_pos + self.memory_start))
 
-        if len(hex_address) > 3:
+        if int(str(hex_address), base=16) > int(str(self.memory_size), base=16):
             self.invalid(message="Label '{}' translates to address out of range")
 
         return hex_address

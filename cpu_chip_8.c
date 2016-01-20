@@ -152,11 +152,6 @@ static void invalid_mem_access(opcode instr, chip_8_cpu cpu) {
 }
 
 static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
-    if (instr == 0x00) {
-        cpu->halt = true;
-        return;
-    }
-
     // 0nnn opcode not implemented
     switch (get_last_byte(instr)) {
         case 0xE0:
@@ -172,6 +167,9 @@ static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
             cpu->performed_jump = true;
             break;
         }
+        case 0xFD:
+            cpu->halt = true;
+            return;
         default:
             not_implemented(cpu, instr);
     }

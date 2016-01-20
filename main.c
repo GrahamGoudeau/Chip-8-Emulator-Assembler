@@ -1,5 +1,8 @@
 #include <ncurses.h>
 #include <unistd.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
 #include "cpu_chip_8.h"
 
 // sudo apt-get install libncurses5-dev

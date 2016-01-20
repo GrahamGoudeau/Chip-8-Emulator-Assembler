@@ -35,6 +35,7 @@ struct chip_8_cpu {
 
     bool performed_jump;
     bool skip_opcode;
+    bool halt;
 };
 
 chip_8_cpu initialize_cpu(void) {
@@ -143,7 +144,8 @@ static void invalid_opcode(opcode instr, chip_8_cpu cpu) {
 static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
     if (instr == 0x00) {
         fprintf(stderr, "Got opcode 0x0000, quitting...\n");
-        shutdown_cpu(cpu, 0);
+        cpu->halt = true;
+        return;
     }
 
     // 0nnn opcode not implemented
@@ -368,6 +370,9 @@ void execute_loop(chip_8_cpu cpu) {
         if (cpu->program_counter >= MEMORY_SIZE) {
             fprintf(stderr, "ERR - Fatal memory error: invalid access at memory cell: '%d'\n", cpu->program_counter);
             shutdown_cpu(cpu, 1);
+        }
+        if (cpu->halt) {
+            return;
         }
         opcode instr = fetch_opcode(cpu);
         if (debug) {

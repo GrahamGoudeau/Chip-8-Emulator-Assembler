@@ -146,9 +146,13 @@ static void invalid_opcode(opcode instr, chip_8_cpu cpu) {
     shutdown_cpu(cpu, 1);
 }
 
+static void invalid_mem_access(opcode instr, chip_8_cpu cpu) {
+    fprintf(stderr, RUNTIME_ERR "'Invalid memory access at: %04X'\n", instr);
+    shutdown_cpu(cpu, 1);
+}
+
 static void handle_0_opcode(opcode instr, chip_8_cpu cpu) {
     if (instr == 0x00) {
-        fprintf(stderr, "Got opcode 0x0000, quitting...\n");
         cpu->halt = true;
         return;
     }

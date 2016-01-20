@@ -254,6 +254,15 @@ static void handle_7_opcode(opcode instr, chip_8_cpu cpu) {
     cpu->registers[reg_number] += last_byte;
 }
 
+static inline void set_vf_if(bool predicate, chip_8_cpu cpu) {
+    if (predicate) {
+        cpu->registers[0xf] = 1;
+    }
+    else {
+        cpu->registers[0xf] = 0;
+    }
+}
+
 static void handle_8_opcode(opcode instr, chip_8_cpu cpu) {
     nibble indicator = get_last_nibble(instr);
     nibble reg_num1 = get_second_nibble(instr);
@@ -277,55 +286,126 @@ static void handle_8_opcode(opcode instr, chip_8_cpu cpu) {
             break;
         case 4:
             result = vx + vy;
-            if ((int)vx + (int)vy > 255) {
-                cpu->registers[0xf] = 1;
-            }
-            else {
-                cpu->registers[0xf] = 0;
-            }
+            set_vf_if((vx > 128) && (vy > 128), cpu);
             break;
         case 5:
             result = vx - vy;
-            if (vx > vy) {
-                cpu->registers[0xf] = 1;
-            }
-            else {
-                cpu->registers[0xf] = 0;
-            }
+            set_vf_if((vx > vy), cpu);
             break;
         case 6:
-            if ((vx & 0x01) == 1) {
-                cpu->registers[0xf] = 1;
-            }
-            else {
-                cpu->registers[0xf] = 0;
-            }
             result = vx >> 1;
+            set_vf_if(((vx & 0x01) == 1), cpu);
             break;
-
         case 7:
-            if (vy > vx) {
-                cpu->registers[0xf] = 1;
-            }
-            else {
-                cpu->registers[0xf] = 0;
-            }
             result = vy - vx;
+            set_vf_if((vy > vx), cpu);
             break;
         case 0xE:
-            if ((vx & 0x80) == 0x80) {
-                cpu->registers[0xf] = 1;
-            }
-            else {
-                cpu->registers[0xf] = 0;
-            }
             result = vx << 1;
+            set_vf_if(((vx & 0x80) == 0x80), cpu);
             break;
         default:
             not_implemented(cpu, instr);
     }
 
     cpu->registers[reg_num1] = result;
+}
+
+static void handle_9_opcode(opcode instr, chip_8_cpu cpu) {
+    if (get_last_nibble(instr) == 0) {
+        nibble reg_num1 = get_second_nibble(instr);
+        nibble reg_num2 = get_third_nibble(instr);
+        if (reg_num1 != reg_num2) {
+            cpu->skip_opcode = true;
+        }
+    }
+    else {
+        not_implemented(cpu, instr);
+    }
+}
+
+static void handle_A_opcode(opcode instr, chip_8_cpu cpu) {
+    address addr = get_last_three_nibbles(instr);
+    cpu->address_register = addr;
+}
+
+static void handle_B_opcode(opcode instr, chip_8_cpu cpu) {
+    chip_8_register offset = cpu->registers[0x0];
+    address addr = get_last_three_nibbles(instr);
+    cpu->program_counter = addr + offset;
+    cpu->performed_jump = true;
+}
+
+static void handle_C_opcode(opcode instr, chip_8_cpu cpu) {
+    uint8_t last_byte = get_last_byte(instr);
+    chip_8_register reg_num = get_second_nibble(instr);
+    uint8_t rand_byte = rand();
+    cpu->registers[reg_num] = (last_byte & rand_byte);
+}
+
+static void handle_D_opcode(opcode instr, chip_8_cpu cpu) {
+    not_implemented(cpu, instr);
+}
+
+static void handle_E_opcode(opcode instr, chip_8_cpu cpu) {
+    /*
+    uint8_t last_byte = get_last_byte(instr);
+    switch (last_byte) {
+        case 0x9E:
+    }
+    */
+    not_implemented(cpu, instr);
+}
+
+static void handle_F_opcode(opcode instr, chip_8_cpu cpu) {
+    int8_t reg_num = get_second_nibble(instr);
+    switch (get_last_byte(instr)) {
+        case 0x07:
+            cpu->registers[reg_num] = cpu->delay_timer;
+            break;
+        case 0x0A:
+            not_implemented(cpu, instr);
+            break;
+        case 0x15:
+            cpu->delay_timer = cpu->registers[reg_num];
+            break;
+        case 0x18:
+            cpu->sound_timer = cpu->registers[reg_num];
+            break;
+        case 0x1E:
+            cpu->address_register = cpu->address_register + cpu->registers[reg_num];
+            break;
+        case 0x29:
+            not_implemented(cpu, instr);
+        case 0x33:
+            not_implemented(cpu, instr);
+        case 0x55: {
+            int8_t register_index;
+            address start_addr = cpu->address_register;
+
+            for (register_index = 0; register_index < NUM_REGISTERS; register_index++) {
+                if (start_addr + register_index >= MEMORY_SIZE) {
+                    invalid_mem_access(instr, cpu);
+                }
+                cpu->memory[start_addr + register_index] = cpu->registers[register_index];
+            }
+            break;
+        }
+        case 0x65: {
+            int8_t register_index;
+            address start_addr = cpu->address_register;
+
+            for (register_index = 0; register_index < NUM_REGISTERS; register_index++) {
+                if (start_addr + register_index >= MEMORY_SIZE) {
+                    invalid_mem_access(instr, cpu);
+                }
+                cpu->registers[register_index] = cpu->memory[start_addr + register_index];
+            }
+            break;
+        }
+        default:
+            not_implemented(cpu, instr);
+    }
 }
 
 static inline nibble get_first_nibble(opcode instr) {
@@ -353,7 +433,6 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
             return handle_7_opcode(instr, cpu);
         case 0x8:
             return handle_8_opcode(instr, cpu);
-            /*
         case 0x9:
             return handle_9_opcode(instr, cpu);
         case 0xA:
@@ -368,7 +447,6 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
             return handle_E_opcode(instr, cpu);
         case 0xF:
             return handle_F_opcode(instr, cpu);
-            */
         default:
             invalid_opcode(instr, cpu);
     }
@@ -386,7 +464,7 @@ void execute_loop(chip_8_cpu cpu) {
         opcode instr = fetch_opcode(cpu);
         if (debug) {
             fprintf(stderr, "Execution loop info -- before processing %04X:\n", instr);
-            fprintf(stderr, "\tProgram counter: %d (%02X)\n", cpu->program_counter, cpu->program_counter);
+            fprintf(stderr, "\tProgram counter: %d (0x%02X)\n", cpu->program_counter, cpu->program_counter);
             fprintf(stderr, "\tStack pointer: %d\n", cpu->stack_pointer);
             fprintf(stderr, "\tRegister contents:\n");
             int i;

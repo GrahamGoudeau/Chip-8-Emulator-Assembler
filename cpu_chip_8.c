@@ -172,7 +172,6 @@ static inline address get_last_three_nibbles(opcode instr) {
 
 static void handle_1_opcode(opcode instr, chip_8_cpu cpu) {
     cpu->performed_jump = true;
-    fprintf(stderr, "Got address in JUMP: %X\n", get_last_three_nibbles(instr));
     cpu->program_counter = get_last_three_nibbles(instr);
 }
 
@@ -373,7 +372,7 @@ void execute_loop(chip_8_cpu cpu) {
         opcode instr = fetch_opcode(cpu);
         if (debug) {
             fprintf(stderr, "Execution loop info -- before processing %04X:\n", instr);
-            fprintf(stderr, "\tProgram counter: %d\n", cpu->program_counter);
+            fprintf(stderr, "\tProgram counter: %d (%02X)\n", cpu->program_counter, cpu->program_counter);
             fprintf(stderr, "\tStack pointer: %d\n", cpu->stack_pointer);
             fprintf(stderr, "\tRegister contents:\n");
             int i;

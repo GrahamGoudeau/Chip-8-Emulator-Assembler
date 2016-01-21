@@ -15,12 +15,11 @@ static void print_usage(void) {
 // http://stackoverflow.com/questions/4849986/how-can-i-check-the-file-extensions-in-c
 int ends_with(const char *name, const char *extension, size_t length) {
     const char *ldot = strrchr(name, '.');
-    if (ldot != NULL)
-    {
-    if (length == 0)
-        length = strlen(extension);
-    return strncmp(ldot + 1, extension, length) == 0;
-
+    if (ldot != NULL) {
+        if (length == 0) {
+            length = strlen(extension);
+        }
+        return strncmp(ldot + 1, extension, length) == 0;
     }
     return 0;
 }

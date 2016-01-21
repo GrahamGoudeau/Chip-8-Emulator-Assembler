@@ -1,0 +1,13 @@
+ld_byte v0 60
+set_delay v0
+jp loop
+
+$label loop
+    ld_delay v1
+    sne_byte v1 0
+    jp exit
+    jp loop
+
+$label exit
+    ld_byte vf 0xff
+    halt

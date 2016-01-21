@@ -16,8 +16,6 @@
 #define OPCODE_DECODE_ERR "ERR - Fatal error during opcode decoding: "
 #define RUNTIME_ERR "ERR - Fatal error during run time: "
 
-int debug = true;
-
 // first valid address of program instructions
 const address PROG_START = 0x200;
 
@@ -506,7 +504,7 @@ static inline void print_debug_info(opcode instr, chip_8_cpu cpu) {
     fprintf(stderr, "\n--------------\n\n");
 }
 
-void execute_loop(chip_8_cpu cpu) {
+void execute_loop(chip_8_cpu cpu, bool debug_flag) {
     if (pthread_create(&(cpu->delay_decrement_thread), NULL, delay_thread, cpu) != 0) {
         shutdown_cpu(cpu, 1);
     }
@@ -526,7 +524,7 @@ void execute_loop(chip_8_cpu cpu) {
             break;
         }
         opcode instr = fetch_opcode(cpu);
-        if (debug) {
+        if (debug_flag) {
             print_debug_info(instr, cpu);
         }
 

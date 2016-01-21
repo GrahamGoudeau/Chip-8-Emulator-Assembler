@@ -493,6 +493,19 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
     }
 }
 
+static inline void print_debug_info(opcode instr, chip_8_cpu cpu) {
+    fprintf(stderr, "Execution loop info -- before processing 0x%04X:\n", instr);
+    fprintf(stderr, "\tProgram counter: %d (0x%04X)\n", cpu->program_counter, cpu->program_counter);
+    fprintf(stderr, "\tStack pointer: %d\n", cpu->stack_pointer);
+    fprintf(stderr, "\tDelay timer: %d (0x%04X)\n", cpu->delay_timer, cpu->delay_timer);
+    fprintf(stderr, "\tRegister contents:\n");
+    int i;
+    for (i = 0; i < NUM_REGISTERS; i++) {
+        fprintf(stderr, "\t\tReg %d: %hu\n", i, cpu->registers[i]);
+    }
+    fprintf(stderr, "\n--------------\n\n");
+}
+
 void execute_loop(chip_8_cpu cpu) {
     if (pthread_create(&(cpu->delay_decrement_thread), NULL, delay_thread, cpu) != 0) {
         shutdown_cpu(cpu, 1);
@@ -514,16 +527,7 @@ void execute_loop(chip_8_cpu cpu) {
         }
         opcode instr = fetch_opcode(cpu);
         if (debug) {
-            fprintf(stderr, "Execution loop info -- before processing %04X:\n", instr);
-            fprintf(stderr, "\tProgram counter: %d (0x%04X)\n", cpu->program_counter, cpu->program_counter);
-            fprintf(stderr, "\tStack pointer: %d\n", cpu->stack_pointer);
-            fprintf(stderr, "\tDelay timer: %d (0x%04X)\n", cpu->delay_timer, cpu->delay_timer);
-            fprintf(stderr, "\tRegister contents:\n");
-            int i;
-            for (i = 0; i < NUM_REGISTERS; i++) {
-                fprintf(stderr, "\t\tReg %d: %hu\n", i, cpu->registers[i]);
-            }
-            fprintf(stderr, "\n--------------\n\n");
+            print_debug_info(instr, cpu);
         }
 
         execute_opcode(instr, cpu);
@@ -540,5 +544,7 @@ void execute_loop(chip_8_cpu cpu) {
             cpu->program_counter = cpu->program_counter + 1;
         }
     }
+
+    // allow 0.1 seconds for the threads to clean up their memory
     usleep(100000);
 }

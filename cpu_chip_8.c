@@ -168,7 +168,7 @@ static void clear_display(void) {
 }
 
 static void not_implemented(chip_8_cpu cpu, opcode instr) {
-    fprintf(stderr, OPCODE_DECODE_ERR "'Not implemented: %04X'\n", instr);
+    fprintf(stderr, OPCODE_DECODE_ERR "'Not implemented: 0x%04X'\n", instr);
     shutdown_cpu(cpu, 1);
 }
 
@@ -183,12 +183,12 @@ static void stack_underflow(chip_8_cpu cpu) {
 }
 
 static void invalid_opcode(opcode instr, chip_8_cpu cpu) {
-    fprintf(stderr, RUNTIME_ERR "'Unrecognized opcode: %04X'\n", instr);
+    fprintf(stderr, RUNTIME_ERR "'Unrecognized opcode: 0x%04X'\n", instr);
     shutdown_cpu(cpu, 1);
 }
 
 static void invalid_mem_access(opcode instr, chip_8_cpu cpu) {
-    fprintf(stderr, RUNTIME_ERR "'Invalid memory access at: %04X'\n", instr);
+    fprintf(stderr, RUNTIME_ERR "'Invalid memory access at: 0x%04X'\n", instr);
     shutdown_cpu(cpu, 1);
 }
 

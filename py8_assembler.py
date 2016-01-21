@@ -2,9 +2,12 @@ import sys
 import textwrap
 import sys
 import re
+import os
 
 comment_start = '#'
 label_start = '$LABEL'
+required_input_ext = '.chasm'
+required_output_ext = '.ch8'
 
 class OpCode:
     def __init__(self, name='', args=[], line_num=None, labels={}):
@@ -379,14 +382,20 @@ def print_usage():
         ADD_BYTE {register} {value} : add the value to the value in
             the register and store back in the same register
         """)
+
 if __name__ == '__main__':
     if len(sys.argv) != 3:
         print_usage()
         sys.exit()
 
-    if sys.argv[1][-3:] == '.as' and sys.argv[2][-4:] == '.ch8':
-        assemble(sys.argv[1], sys.argv[2])
-    elif sys.argv[1][-3:] != '.as':
-        print 'Unrecognized input assembly filetype: {} (expected .as)'.format(sys.argv[1][-3:])
-    elif sys.argv[2][-4:] != '.ch8':
-        print 'Unrecognized output filetype: {} (expected .ch8)'.format(sys.argv[2][-4:])
+    input_name = sys.argv[1]
+    output_name = sys.argv[2]
+    _, input_ext = os.path.splitext(input_name)
+    _, output_ext = os.path.splitext(output_name)
+
+    if input_ext != required_input_ext:
+        print 'Unrecognized input assembly filetype: {} (expected {})'.format(input_ext, required_input_ext)
+    elif output_ext != required_output_ext:
+        print 'Unrecognized output filetype: {} (expected {})'.format(output_ext, required_output_ext)
+    else:
+        assemble(input_name, output_name)

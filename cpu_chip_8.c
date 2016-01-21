@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
+#include <unistd.h>
+#include <pthread.h>
 #include "cpu_chip_8.h"
 
 #define MEMORY_SIZE 0x1000
@@ -37,7 +39,42 @@ struct chip_8_cpu {
     bool performed_jump;
     bool skip_opcode;
     bool halt;
+
+    pthread_mutex_t delay_mutex;
+    pthread_mutex_t sound_mutex;
+    pthread_t delay_decrement_thread;
+    pthread_t sound_decrement_thread;
 };
+
+void *delay_thread(void *arg) {
+    chip_8_cpu cpu = arg;
+    while (true) {
+        if (cpu->halt) {
+            return NULL;
+        }
+        if (cpu->delay_timer) {
+            while (cpu->delay_timer) {
+                pthread_mutex_lock(&(cpu->delay_mutex));
+                cpu->delay_timer--;
+                pthread_mutex_unlock(&(cpu->delay_mutex));
+
+                // sleep for 0.016 seconds = 1/60 seconds = 60 hz
+                usleep(16666);
+            }
+        }
+    }
+    return NULL;
+}
+
+void *sound_thread(void *arg) {
+    chip_8_cpu cpu = arg;
+    while (true) {
+        if (cpu->halt) {
+            return NULL;
+        }
+    }
+    return NULL;
+}
 
 chip_8_cpu initialize_cpu(void) {
     chip_8_cpu cpu = malloc(sizeof(struct chip_8_cpu));
@@ -63,6 +100,8 @@ chip_8_cpu initialize_cpu(void) {
     cpu->performed_jump = false;
     cpu->skip_opcode = false;
     cpu->halt = false;
+    pthread_mutex_init(&(cpu->delay_mutex), NULL);
+    pthread_mutex_init(&(cpu->sound_mutex), NULL);
 
     // initialize random byte stream for RAND opcode
     srand(time(NULL));
@@ -71,6 +110,8 @@ chip_8_cpu initialize_cpu(void) {
 
 void free_cpu(chip_8_cpu cpu) {
     if (cpu) {
+        pthread_mutex_destroy(&(cpu->delay_mutex));
+        pthread_mutex_destroy(&(cpu->sound_mutex));
         free(cpu);
     }
 }
@@ -365,7 +406,9 @@ static void handle_F_opcode(opcode instr, chip_8_cpu cpu) {
             not_implemented(cpu, instr);
             break;
         case 0x15:
+            pthread_mutex_lock(&(cpu->delay_mutex));
             cpu->delay_timer = cpu->registers[reg_num];
+            pthread_mutex_unlock(&(cpu->delay_mutex));
             break;
         case 0x18:
             cpu->sound_timer = cpu->registers[reg_num];
@@ -451,19 +494,30 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
 }
 
 void execute_loop(chip_8_cpu cpu) {
+    if (pthread_create(&(cpu->delay_decrement_thread), NULL, delay_thread, cpu) != 0) {
+        shutdown_cpu(cpu, 1);
+    }
+    if (pthread_create(&(cpu->sound_decrement_thread), NULL, sound_thread, cpu) != 0) {
+        fprintf(stderr, "Failed to start the sound register thread, exiting...\n");
+        shutdown_cpu(cpu, 1);
+    }
+    pthread_detach(cpu->delay_decrement_thread);
+    pthread_detach(cpu->sound_decrement_thread);
+
     while (1) {
         if (cpu->program_counter >= MEMORY_SIZE) {
             fprintf(stderr, "ERR - Fatal memory error: invalid access at memory cell: '%d'\n", cpu->program_counter);
             shutdown_cpu(cpu, 1);
         }
         if (cpu->halt) {
-            return;
+            break;
         }
         opcode instr = fetch_opcode(cpu);
         if (debug) {
             fprintf(stderr, "Execution loop info -- before processing %04X:\n", instr);
-            fprintf(stderr, "\tProgram counter: %d (0x%02X)\n", cpu->program_counter, cpu->program_counter);
+            fprintf(stderr, "\tProgram counter: %d (0x%04X)\n", cpu->program_counter, cpu->program_counter);
             fprintf(stderr, "\tStack pointer: %d\n", cpu->stack_pointer);
+            fprintf(stderr, "\tDelay timer: %d (0x%04X)\n", cpu->delay_timer, cpu->delay_timer);
             fprintf(stderr, "\tRegister contents:\n");
             int i;
             for (i = 0; i < NUM_REGISTERS; i++) {
@@ -474,18 +528,17 @@ void execute_loop(chip_8_cpu cpu) {
 
         execute_opcode(instr, cpu);
         if (cpu->performed_jump) {
-            // reset jumped flag
             cpu->performed_jump = false;
             continue;
         }
 
         if (cpu->skip_opcode) {
             cpu->program_counter = cpu->program_counter + 2;
-            // reset skip flag
             cpu->skip_opcode = false;
         }
         else {
             cpu->program_counter = cpu->program_counter + 1;
         }
     }
+    usleep(100000);
 }

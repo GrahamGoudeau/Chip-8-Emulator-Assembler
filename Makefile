@@ -1,4 +1,4 @@
-LDFLAGS=-lncurses
+LDFLAGS=-lncurses -lpthread
 FLAGS=-Wall -Wextra -g -c
 CC=gcc
 

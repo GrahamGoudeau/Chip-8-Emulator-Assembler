@@ -7,7 +7,7 @@ $label main
     ld_byte va 0xff
     halt
 $label fibo
-    sne_byte v2 11
+    sne_byte v2 13
     ret
     add_byte v2 1
 

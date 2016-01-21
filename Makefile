@@ -1,8 +1,10 @@
 LDFLAGS=-lncurses -lpthread
 FLAGS=-Wall -Wextra -g -c
 CC=gcc
+EXEC_NAME=chip_8
 
-all: chip_8
+#all: chip_8
+all: ${EXEC_NAME}
 
 cpu_chip_8.o: cpu_chip_8.h cpu_chip_8.c
 		${CC} ${FLAGS} cpu_chip_8.c -o $@
@@ -10,5 +12,8 @@ cpu_chip_8.o: cpu_chip_8.h cpu_chip_8.c
 main.o: main.c
 		${CC} ${FLAGS} $^ -o $@
 
-chip_8: cpu_chip_8.o main.o
+${EXEC_NAME}: cpu_chip_8.o main.o
 		${CC} $^ -o $@ ${LDFLAGS}
+
+clean:
+		rm *.o ${EXEC_NAME}

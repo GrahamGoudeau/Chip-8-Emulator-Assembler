@@ -20,6 +20,6 @@ void free_cpu(chip_8_cpu);
 
 void initialize_memory(chip_8_cpu, FILE *);
 
-void execute_loop(chip_8_cpu, bool debug_flag);
+void execute_loop(chip_8_cpu, FILE *debug_log);
 
 #endif

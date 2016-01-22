@@ -497,15 +497,15 @@ static void execute_opcode(opcode instr, chip_8_cpu cpu) {
     }
 }
 
-static inline void print_debug_info(opcode instr, chip_8_cpu cpu) {
-    fprintf(stderr, "Execution loop info -- before processing 0x%04X:\n", instr);
-    fprintf(stderr, "\tProgram counter: %d (0x%04X)\n", cpu->program_counter, cpu->program_counter);
-    fprintf(stderr, "\tStack pointer: %d\n", cpu->stack_pointer);
-    fprintf(stderr, "\tDelay timer: %d (0x%04X)\n", cpu->delay_timer, cpu->delay_timer);
-    fprintf(stderr, "\tRegister contents:\n");
+static inline void print_debug_info(FILE *debug_log, opcode instr, chip_8_cpu cpu) {
+    fprintf(debug_log, "Execution loop info -- before processing 0x%04X:\n", instr);
+    fprintf(debug_log, "\tProgram counter: %d (0x%04X)\n", cpu->program_counter, cpu->program_counter);
+    fprintf(debug_log, "\tStack pointer: %d\n", cpu->stack_pointer);
+    fprintf(debug_log, "\tDelay timer: %d (0x%04X)\n", cpu->delay_timer, cpu->delay_timer);
+    fprintf(debug_log, "\tRegister contents:\n");
     int i;
     for (i = 0; i < NUM_REGISTERS; i++) {
-        fprintf(stderr, "\t\tReg %d: %hu\n", i, cpu->registers[i]);
+        fprintf(debug_log, "\t\tReg %d: %hu\n", i, cpu->registers[i]);
     }
     fprintf(debug_log, "\n--------------\n\n");
     fflush(debug_log);
@@ -566,8 +566,8 @@ void execute_loop(chip_8_cpu cpu, FILE *debug_log) {
             break;
         }
         opcode instr = fetch_opcode(cpu);
-        if (debug_flag) {
-            print_debug_info(instr, cpu);
+        if (debug_log) {
+            print_debug_info(debug_log, instr, cpu);
         }
 
         execute_opcode(instr, cpu);

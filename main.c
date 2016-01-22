@@ -8,7 +8,7 @@
 #define required_input_ext "ch8"
 
 static void print_usage(void) {
-    fprintf(stderr, "Usage:\t./chip_8 [input.ch8] [-d (debug flag)]\n");
+    fprintf(stderr, "Usage:\t./chip_8 [-p input.ch8] [-d debug_filename]\n");
     fprintf(stderr, "\t(.ch8 file extension is required)\n");
 }
 
@@ -29,14 +29,14 @@ int ends_with(const char *name, const char *extension, size_t length) {
 // http://stackoverflow.com/questions/4025891/create-a-function-to-check-for-key-press-in-unix-using-ncurses
 // https://viget.com/extend/game-programming-in-c-with-the-ncurses-library
 int main(int argc, char **argv) {
-    int debug_flag = 0;
+    char *debug_filename = NULL;
     char *input_filename = NULL;
     int c;
     opterr = 0;
-    while ((c = getopt(argc, argv, "dp:")) != -1) {
+    while ((c = getopt(argc, argv, "d:p:")) != -1) {
         switch (c) {
             case 'd':
-                debug_flag = 1;
+                debug_filename = optarg;
                 break;
             case 'p':
                 input_filename = optarg;
@@ -61,10 +61,14 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Fatal error when opening input file: '%s'\n", argv[1]);
         exit(1);
     }
+    FILE *debug_file = NULL;
+    if (debug_filename) {
+        debug_file = fopen(debug_filename, "w");
+    }
     chip_8_cpu cpu = initialize_cpu();
     initialize_memory(cpu, input_file);
     fclose(input_file);
-    execute_loop(cpu, debug_flag);
+    execute_loop(cpu, debug_file);
     free_cpu(cpu);
 
     return EXIT_SUCCESS;

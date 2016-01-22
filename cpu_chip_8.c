@@ -5,6 +5,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <ncurses.h>
 #include "cpu_chip_8.h"
 
 #define MEMORY_SIZE 0x1000
@@ -18,6 +19,8 @@
 
 // first valid address of program instructions
 const address PROG_START = 0x200;
+const int default_window_height = 32;
+const int default_window_width = 64;
 
 struct chip_8_cpu {
     address memory[MEMORY_SIZE];
@@ -42,6 +45,8 @@ struct chip_8_cpu {
     pthread_mutex_t sound_mutex;
     pthread_t delay_decrement_thread;
     pthread_t sound_decrement_thread;
+
+    WINDOW *chip_8_screen;
 };
 
 void *delay_thread(void *arg) {
@@ -116,6 +121,7 @@ void free_cpu(chip_8_cpu cpu) {
 
 void shutdown_cpu(chip_8_cpu cpu, int error_code) {
     free_cpu(cpu);
+    endwin();
     exit(error_code);
 }
 
@@ -501,10 +507,43 @@ static inline void print_debug_info(opcode instr, chip_8_cpu cpu) {
     for (i = 0; i < NUM_REGISTERS; i++) {
         fprintf(stderr, "\t\tReg %d: %hu\n", i, cpu->registers[i]);
     }
-    fprintf(stderr, "\n--------------\n\n");
+    fprintf(debug_log, "\n--------------\n\n");
+    fflush(debug_log);
 }
 
-void execute_loop(chip_8_cpu cpu, bool debug_flag) {
+static WINDOW *create_window(int height, int width) {
+    int max_height;
+    int max_width;
+    getmaxyx(stdscr, max_height, max_width);
+    int window_height = (max_height <= height) ? max_height : height;
+    int window_width = (max_width <= width) ? max_width : width;
+    int starty = (LINES - window_height) / 2;
+    int startx = (COLS - window_width) / 2;
+
+    WINDOW *window;
+    window = newwin(window_height, window_width, starty, startx);
+    box(window, 0, 0);
+
+    return window;
+}
+
+static void refresh_window(WINDOW *window) {
+    box(window, 0, 0);
+    refresh();
+    wrefresh(window);
+}
+
+static WINDOW *init_ncurses(int height, int width) {
+    initscr();
+    curs_set(0);
+    cbreak();
+    WINDOW *window = create_window(height, width);
+    refresh_window(window);
+
+    return window;
+}
+
+void execute_loop(chip_8_cpu cpu, FILE *debug_log) {
     if (pthread_create(&(cpu->delay_decrement_thread), NULL, delay_thread, cpu) != 0) {
         shutdown_cpu(cpu, 1);
     }
@@ -514,6 +553,9 @@ void execute_loop(chip_8_cpu cpu, bool debug_flag) {
     }
     pthread_detach(cpu->delay_decrement_thread);
     pthread_detach(cpu->sound_decrement_thread);
+
+    cpu->chip_8_screen = init_ncurses(default_window_height, default_window_width);
+    refresh_window(cpu->chip_8_screen);
 
     while (1) {
         if (cpu->program_counter >= MEMORY_SIZE) {
@@ -544,5 +586,7 @@ void execute_loop(chip_8_cpu cpu, bool debug_flag) {
     }
 
     // allow 0.1 seconds for the threads to clean up their memory
-    usleep(100000);
+    //usleep(100000);
+    delwin(cpu->chip_8_screen);
+    endwin();
 }

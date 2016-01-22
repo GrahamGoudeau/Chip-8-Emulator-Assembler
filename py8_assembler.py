@@ -258,7 +258,11 @@ class OpCode:
         return register[1]
 
     def convert_val_to_hex_or_invalid(self, num, max_len=0):
-        numeric_result = hex(int(num, base=0))
+        try:
+            numeric_result = hex(int(num, base=0))
+        except ValueError as e:
+            self.invalid(message="Unexpected error while converting to hex: '{}'".format(e))
+
         if int(numeric_result, base=16) < 0:
             self.invalid(message="Cannot give negative numeric literals")
         result = numeric_result[2:].zfill(max_len)
@@ -349,6 +353,7 @@ def assemble(input_file, output_file):
         sys.exit()
 
     encoded = map(lambda opcode: opcode.encoded(), opcodes)
+    print 'Writing opcodes:'
     for opcode in opcodes:
         print str(opcode)
     with open(output_file, 'wb') as f:

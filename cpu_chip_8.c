@@ -456,16 +456,17 @@ static void handle_F_opcode(opcode instr, chip_8_cpu cpu) {
             cpu->address_register = cpu->address_register + cpu->registers[reg_num];
             break;
         case 0x29:
-            not_implemented(cpu, instr);
+            cpu->address_register = reg_num;
+            break;
         case 0x33:
             not_implemented(cpu, instr);
         case 0x55: {
             int8_t register_index;
             address start_addr = cpu->address_register;
 
-            for (register_index = 0; register_index < NUM_REGISTERS; register_index++) {
+            for (register_index = 0; register_index < reg_num; register_index++) {
                 if (start_addr + register_index >= MEMORY_SIZE) {
-                    invalid_mem_access(instr, cpu);
+                    invalid_mem_access(start_addr + register_index, cpu);
                 }
                 cpu->memory[start_addr + register_index] = cpu->registers[register_index];
             }
@@ -475,7 +476,7 @@ static void handle_F_opcode(opcode instr, chip_8_cpu cpu) {
             int8_t register_index;
             address start_addr = cpu->address_register;
 
-            for (register_index = 0; register_index < NUM_REGISTERS; register_index++) {
+            for (register_index = 0; register_index < reg_num; register_index++) {
                 if (start_addr + register_index >= MEMORY_SIZE) {
                     invalid_mem_access(instr, cpu);
                 }

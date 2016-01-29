@@ -3,7 +3,6 @@ FLAGS=-Wall -Wextra -g -c
 CC=gcc
 EXEC_NAME=chip_8
 
-#all: chip_8
 all: ${EXEC_NAME}
 
 cpu_chip_8.o: cpu_chip_8.h cpu_chip_8.c

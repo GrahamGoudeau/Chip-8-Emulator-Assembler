@@ -144,6 +144,40 @@ static int read_16_bits(FILE *program_file) {
     return instruction;
 }
 
+void store_digit_sprite(uint8_t sprite_arr[], address start_loc, chip_8_cpu cpu) {
+    uint8_t i;
+    for (i = 0; i < SPRITE_LEN; i++) {
+        cpu->memory[start_loc + i] = sprite_arr[i];
+    }
+}
+
+void store_digit_sprites(chip_8_cpu cpu) {
+    uint8_t zero[5] = {0xF0,
+                       0x90,
+                       0x90,
+                       0x90,
+                       0xF0};
+    store_digit_sprite(zero, 0 * SPRITE_LEN, cpu);
+    uint8_t one[5] = {0x20,
+                      0x60,
+                      0x20,
+                      0x20,
+                      0x70};
+    store_digit_sprite(one, 1 * SPRITE_LEN, cpu);
+    uint8_t two[5] = {0xF0,
+                      0x10,
+                      0xF0,
+                      0x80,
+                      0xF0};
+    store_digit_sprite(two, 2 * SPRITE_LEN, cpu);
+    uint8_t three[5] = {0xF0,
+                        0x10,
+                        0xF0,
+                        0x10,
+                        0xF0};
+    store_digit_sprite(three, 3 * SPRITE_LEN, cpu);
+}
+
 void initialize_memory(chip_8_cpu cpu, FILE *program_file) {
     int new_16_bits;
     address destination = PROG_START;
@@ -157,6 +191,7 @@ void initialize_memory(chip_8_cpu cpu, FILE *program_file) {
         fprintf(stderr, MEMORY_INIT_ERR "'Program size exceeds chip-8 memory capacity'\n");
         shutdown_cpu(cpu, 1);
     }
+    store_digit_sprites(cpu);
 }
 
 static opcode fetch_opcode(chip_8_cpu cpu) {

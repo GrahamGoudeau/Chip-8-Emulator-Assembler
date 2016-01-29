@@ -45,7 +45,7 @@ class OpCode:
             'AWAIT_KEY': (1, self.build_await_key),
             'SET_DELAY': (1, self.build_set_delay),
             'SET_SOUND': (1, self.build_set_sound),
-            'LD_ADDR': (1, self.build_ld_addr),
+            'ADDR_OFFSET': (1, self.build_addr_offset),
             'LD_SPRITE': (1, self.build_ld_sprite),
             'STORE_BCD': (1, self.build_store_bcd),
             'STORE_REGS': (1, self.build_store_regs),
@@ -194,7 +194,7 @@ class OpCode:
         reg_num = self.get_register_or_invalid(register)
         return OpCode.build_opcode('F', reg_num, '1', '8')
 
-    def build_ld_addr(self, register):
+    def build_addr_offset(self, register):
         reg_num = self.get_register_or_invalid(register)
         return OpCode.build_opcode('F', reg_num, '1', 'E')
 

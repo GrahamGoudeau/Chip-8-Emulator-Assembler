@@ -137,7 +137,7 @@ class OpCode:
     def build_sub_reg(self, register1, register2):
         reg_num1 = self.get_register_or_invalid(register1)
         reg_num2 = self.get_register_or_invalid(register2)
-        return OpCode.build_opcode('8', reg_num1, reg_num2, '4')
+        return OpCode.build_opcode('8', reg_num1, reg_num2, '5')
 
     def build_shr_reg(self, register):
         reg_num = self.get_register_or_invalid(register)

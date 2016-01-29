@@ -538,6 +538,7 @@ static inline void print_debug_info(FILE *debug_log, opcode instr, chip_8_cpu cp
     fprintf(debug_log, "\tProgram counter: %d (0x%04X)\n", cpu->program_counter, cpu->program_counter);
     fprintf(debug_log, "\tStack pointer: %d\n", cpu->stack_pointer);
     fprintf(debug_log, "\tDelay timer: %d (0x%04X)\n", cpu->delay_timer, cpu->delay_timer);
+    fprintf(debug_log, "\tAddress register: %d (0x%04X)\n", cpu->address_register, cpu->address_register);
     fprintf(debug_log, "\tRegister contents:\n");
     int i;
     for (i = 0; i < NUM_REGISTERS; i++) {

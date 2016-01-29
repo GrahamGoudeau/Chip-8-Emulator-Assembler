@@ -9,6 +9,11 @@ label_start = '$LABEL'
 stack_init = '$STACK_INIT'
 push_token = '$PUSH'
 pop_token = '$POP'
+
+# set the stack pointer back to its proper location
+# (can be used after an opcode like Fx29, which sets the address reg
+# to the location for digit vx)
+reset_stack_token = '$RESET_STACK_POINTER'
 required_input_ext = '.chasm'
 required_output_ext = '.ch8'
 memory_start = 0x200
@@ -334,8 +339,12 @@ def assemble(input_file, output_file):
         opcodes.append(new_opcode)
 
     # assumes that we have finished reading in the opcodes
-    def generate_stack_init(opcodes):
+    def generate_stack_init(args, opcodes):
         global address_register
+        if len(args) != 0:
+            print '"' + stack_init + '" does not take any arguments'
+            sys.exit()
+
         address_register = memory_size - 1
         # account for all existing opcodes plus this new one
         set_addr = OpCode(name='LD_ADDR', args=[hex(address_register)])
@@ -380,6 +389,15 @@ def assemble(input_file, output_file):
         ld_reg = OpCode(name='LD_REG', args=[register, transient_register])
         opcodes.append(ld_reg)
 
+    def generate_reset(args, opcodes):
+        global address_register
+        if len(args) != 0:
+            print '"' + reset_stack_token + '" does not take any args'
+            sys.exit()
+
+        reset_opcode = OpCode(name='LD_ADDR', args=[hex(address_register)])
+        opcodes.append(reset_opcode)
+
     def parse_line(line, opcodes, labels, first_line):
         if len(line) == 0:
             return None
@@ -389,11 +407,17 @@ def assemble(input_file, output_file):
         if first_token == label_start:
             parse_label(line, opcodes, labels, first_line)
         elif first_token == stack_init:
-            generate_stack_init(opcodes)
+            if not first_line:
+                print 'Must initialize a stack on the first line of ' + required_input_ext + ' file'
+                sys.exit()
+
+            generate_stack_init(args, opcodes)
         elif first_token == push_token:
             generate_push(args, opcodes)
         elif first_token == pop_token:
             generate_pop(args, opcodes)
+        elif first_token == reset_stack_token:
+            generate_reset(args, opcodes)
         else:
             # TODO: change params to first_token, args
             parse_opcode(line, opcodes, labels)

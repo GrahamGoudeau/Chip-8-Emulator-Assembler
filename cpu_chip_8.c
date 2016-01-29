@@ -17,10 +17,20 @@
 #define OPCODE_DECODE_ERR "ERR - Fatal error during opcode decoding: "
 #define RUNTIME_ERR "ERR - Fatal error during run time: "
 
+#define ACTIVE_PIXEL '#'
+#define INACTIVE_PIXEL ' '
+
+#define SPRITE_LEN 5
+
 // first valid address of program instructions
 const address PROG_START = 0x200;
-const int default_window_height = 32;
-const int default_window_width = 64;
+
+
+// should be width of 64; + 1 for the border, + 1 for width - 1
+const int default_window_width = 66;
+
+// same for height, but default is 32
+const int default_window_height = 34;
 
 struct chip_8_cpu {
     address memory[MEMORY_SIZE];
@@ -421,17 +431,63 @@ static void handle_C_opcode(opcode instr, chip_8_cpu cpu) {
     cpu->registers[reg_num] = (last_byte & rand_byte);
 }
 
+static void refresh_window(WINDOW *window) {
+    box(window, 0, 0);
+    refresh();
+    wrefresh(window);
+}
+
+static void flip_pixel(int x, int y, chip_8_cpu cpu) {
+    int scr_height, scr_width;
+    getmaxyx(stdscr, scr_height, scr_width);
+    int max_height = (default_window_height < scr_height) ? default_window_height : scr_height;
+    int max_width = (default_window_width < scr_width) ? default_window_width : scr_width;
+    int draw_x = x + 1;
+    int draw_y = y + 1;
+    while (draw_x >= max_width) {
+        draw_x -= max_width;
+    }
+    if (draw_x == 0) {
+        draw_x = 1;
+    }
+    if (draw_x == max_width) {
+        draw_x = max_width - 1;
+    }
+
+    // https://www.mkssoftware.com/docs/man3/curs_inch.3.asp
+    chtype char_info = mvwinch(cpu->chip_8_screen, draw_y, draw_x);
+    char char_at = char_info & A_CHARTEXT;
+
+    char new_pixel = (char_at == ACTIVE_PIXEL) ? INACTIVE_PIXEL : ACTIVE_PIXEL;
+    mvwaddch(cpu->chip_8_screen, draw_y, draw_x, new_pixel);
+    set_vf_if(char_at == ACTIVE_PIXEL, cpu);
+
+    refresh_window(cpu->chip_8_screen);
+}
+
 static void handle_D_opcode(opcode instr, chip_8_cpu cpu) {
-    not_implemented(cpu, instr);
+    chip_8_register x_reg = get_second_nibble(instr);
+    uint8_t start_x = cpu->registers[x_reg];
+    chip_8_register y_reg = get_third_nibble(instr);
+    uint8_t start_y = cpu->registers[y_reg];
+    uint8_t sprite_height = get_last_nibble(instr);
+
+    address sprite_start_location = cpu->address_register;
+    uint8_t row, col;
+    for (row = 0; row < sprite_height; row++) {
+        uint8_t sprite_row = cpu->memory[sprite_start_location + row];
+        for (col = 0; col < 8; col++) {
+            // get farthest left pixel
+            uint8_t pixel = sprite_row & 0x80;
+            if (pixel) {
+                flip_pixel(start_x + col, start_y + row, cpu);
+            }
+            sprite_row = sprite_row << 1;
+        }
+    }
 }
 
 static void handle_E_opcode(opcode instr, chip_8_cpu cpu) {
-    /*
-    uint8_t last_byte = get_last_byte(instr);
-    switch (last_byte) {
-        case 0x9E:
-    }
-    */
     not_implemented(cpu, instr);
 }
 
@@ -564,12 +620,6 @@ static WINDOW *create_window(int height, int width) {
     return window;
 }
 
-static void refresh_window(WINDOW *window) {
-    box(window, 0, 0);
-    refresh();
-    wrefresh(window);
-}
-
 static WINDOW *init_ncurses(int height, int width) {
     initscr();
     curs_set(0);
@@ -623,7 +673,7 @@ void execute_loop(chip_8_cpu cpu, FILE *debug_log) {
     }
 
     // allow 0.1 seconds for the threads to clean up their memory
-    //usleep(100000);
+    usleep(100000);
     delwin(cpu->chip_8_screen);
     endwin();
 }

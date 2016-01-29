@@ -6,8 +6,14 @@ import os
 
 comment_start = '#'
 label_start = '$LABEL'
+stack_init = '$STACK_INIT'
+push_token = '$PUSH'
+pop_token = '$POP'
 required_input_ext = '.chasm'
 required_output_ext = '.ch8'
+memory_start = 0x200
+memory_size = 0x1000
+transient_register = 'v0'
 
 class OpCode:
     def __init__(self, name='', args=[], line_num=None, labels={}):
@@ -53,8 +59,6 @@ class OpCode:
         }
         self.line_num = line_num
         self.labels = labels
-        self.memory_start = 0x200
-        self.memory_size = 0x1000
 
     def __str__(self):
         if self.line_num is None:
@@ -165,7 +169,7 @@ class OpCode:
         return OpCode.build_opcode('C', reg_num, hex_val[0], hex_val[1])
 
     def build_draw(self, register1, register2, nibble):
-        hex_nib = self.convert_val_to_hex_or_invalid(value, max_len=1)
+        hex_nib = self.convert_val_to_hex_or_invalid(nibble, max_len=1)
         reg_num1 = self.get_register_or_invalid(register1)
         reg_num2 = self.get_register_or_invalid(register2)
         return OpCode.build_opcode('D', reg_num1, reg_num2, hex_nib)
@@ -238,9 +242,9 @@ class OpCode:
         if source_code_pos is None:
             self.invalid(message="Unable to resolve label '{}'".format(label))
 
-        hex_address = self.convert_val_to_hex_or_invalid(str(source_code_pos + self.memory_start))
+        hex_address = self.convert_val_to_hex_or_invalid(str(source_code_pos + memory_start))
 
-        if int(str(hex_address), base=16) > int(str(self.memory_size), base=16):
+        if int(str(hex_address), base=16) > int(str(memory_size), base=16):
             self.invalid(message="Label '{}' translates to address out of range")
 
         return hex_address
@@ -305,6 +309,8 @@ class OpCode:
         sys.exit()
 
 def assemble(input_file, output_file):
+    global address_register
+    address_register = None
     def parse_label(line, opcodes, labels, first_line):
         first_token = line[0].upper()
         if first_token == label_start and len(line) == 2:
@@ -327,6 +333,71 @@ def assemble(input_file, output_file):
         new_opcode = OpCode(name=line[0], args=line[1:], labels=labels)
         opcodes.append(new_opcode)
 
+    # assumes that we have finished reading in the opcodes
+    def generate_stack_init(opcodes):
+        global address_register
+        address_register = memory_size - 1
+        # account for all existing opcodes plus this new one
+        set_addr = OpCode(name='LD_ADDR', args=[hex(address_register)])
+        opcodes.append(set_addr)
+
+    def generate_push(args, opcodes):
+        global address_register
+        if len(args) > 15:
+            print 'Fatal error: Cannot push more than 15 registers at a time'
+            sys.exit()
+
+        if address_register is None:
+            print 'Fatal error: a push occurred before the address register was initialized'
+            sys.exit()
+
+        store_opcode = OpCode(name='STORE_REGS', args=[transient_register])
+        for arg in args:
+            load_transient = OpCode(name='LD_REG', args=[transient_register, arg])
+            opcodes.append(load_transient)
+            opcodes.append(store_opcode)
+
+        address_register -= len(args)
+        update_addr_reg = OpCode(name='LD_ADDR', args=[hex(address_register)])
+        opcodes.append(update_addr_reg)
+
+    def generate_pop(args, opcodes):
+        global address_register
+        if address_register is None:
+            print 'Fatal error: a pop occurred before the address register was initialized'
+            sys.exit()
+
+        if len(args) != 1:
+            print 'Fatal error: must pop into exactly one register'
+            sys.exit()
+
+        register = args[0]
+        address_register += 1
+        mv_addr = OpCode(name='LD_ADDR', args=[hex(address_register)])
+        opcodes.append(mv_addr)
+        ld_transient = OpCode(name='LD_REGS', args=[transient_register])
+        opcodes.append(ld_transient)
+        ld_reg = OpCode(name='LD_REG', args=[register, transient_register])
+        opcodes.append(ld_reg)
+
+    def parse_line(line, opcodes, labels, first_line):
+        if len(line) == 0:
+            return None
+
+        first_token = line[0].upper()
+        args = line[1:]
+        if first_token == label_start:
+            parse_label(line, opcodes, labels, first_line)
+        elif first_token == stack_init:
+            generate_stack_init(opcodes)
+        elif first_token == push_token:
+            generate_push(args, opcodes)
+        elif first_token == pop_token:
+            generate_pop(args, opcodes)
+        else:
+            # TODO: change params to first_token, args
+            parse_opcode(line, opcodes, labels)
+
     opcodes = []
     labels = {}
     with open(input_file, 'r') as f:
@@ -341,11 +412,7 @@ def assemble(input_file, output_file):
                 continue
 
             line = line.split()
-            first_token = line[0].upper()
-            if first_token == label_start:
-                parse_label(line, opcodes, labels, first_line)
-            else:
-                parse_opcode(line, opcodes, labels)
+            parse_line(line, opcodes, labels, first_line)
             first_line = False
 
     if opcodes and line[0].upper() == label_start:
